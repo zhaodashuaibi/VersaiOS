@@ -1,0 +1,67 @@
+# 🤖 VersaiOS: AI-Driven iOS Physical Automation Agent
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Hardware: ESP32-S3](https://img.shields.io/badge/Hardware-ESP32--S3-blue.svg)]()
+[![AI: Gemini Vision](https://img.shields.io/badge/AI_Brain-Gemini_Pro_Vision-orange.svg)]()
+
+**VersaiOS** 是一个基于“视觉大模型 (VLM) + 硬件级 HID 注入”的次世代 iOS 跨端物理控制系统。
+
+没有传统的 WebDriverAgent (WDA)、Appium 等繁琐的软件级测试框架，**无需越狱、无需 Mac 电脑、无需 7 天开发者证书签名**。只需一块 ESP32 单片机作为“物理机械手”，结合大模型的“视觉大脑”，即可实现对任何未越狱 iPhone 的像素级自然语言控制。
+
+---
+
+## ✨ 核心亮点 (Core Features)
+
+🧠 视觉大脑 (Vision-Language AI)：** 接入 Gemini 视觉大模型，无需繁琐的 UI 树 (XML) 解析。直接输入自然语言（如：“点击微信”或“点右上角的红色关闭按钮”），AI 即可自动理解屏幕语义并返回目标相对坐标。
+
+🛡️ 降维物理打击 (Hardware HID Attack)：** 电脑端 Python 大脑下发绝对坐标指令，ESP32 伪装成苹果官方蓝牙鼠标执行物理点击。从底层彻底绕过iOS 软件层面的自动化防护。
+
+🎯 独创“暴力归零”防加速算法 (Corner-Bumping Algorithm)：** iOS 系统内置了强制的蓝牙鼠标加速度机制（且无法通过常规协议关闭），导致绝对坐标定位极难。本项目在单片机 C++ 固件中植入了极客级的“左上角暴力归零 + 像素级匀速步进”算法，完美抵消了 iOS 的倍率放大，实现了指哪打哪的绝对坐标精准命中。
+
+---
+
+## 🏗️ 系统架构 (Architecture)
+
+本系统的控制链路分为四个绝对隔离的层级，确保安全：
+
+```text
+[ 👁️ 眼睛层 ] -> [ 🧠 大脑层 ] -> [ ⚡ 神经层 ] -> [ 🦾 物理执行层 ]
+
+  PC 投屏软件    Python 主控端      USB 串口通讯      ESP32-S3 (BLE)      iPhone
+(如 UxPlay)   (Gemini Vision)   (Baud:115200)   (HID Mouse 协议)  (辅助触控光标)
+```
+## 🛠️ 硬件与环境依赖 (Requirements)
+硬件： ESP32 开发板（实测型号：ESP32-S3-N16R8）。
+
+iOS 设置： * 开启 辅助触控 (AssistiveTouch)。
+
+将 跟踪速度 (Tracking Speed) 调至正中间。
+
+关闭 指针动画 (Pointer Animations)。
+
+软件环境： * Python 3.8+ (依赖请见 requirements.txt)
+
+Arduino IDE (需手动安装 T-vK 的 ESP32-BLE-Mouse 库，并建议将 esp32 core 降级至 2.0.17 以避免编译错误)
+
+PC 端需运行 iOS 投屏软件（如基于 AirPlay 协议的 UxPlay）。
+## 🚀 开始 (Start)
+烧录固件： 将 hardware/esp32_ble_mouse/esp32_ble_mouse.ino 烧录至 ESP32-S3 开发板。
+
+连接蓝牙： 保持开发板通过 USB 连接电脑，在 iPhone 蓝牙列表中连接名为 VersaiOS_Hand 的设备。
+
+配置参数： 打开 src/main_versaios.py，填入你的 Gemini API Key 以及对应的串口号（如 COM3）。
+
+校准步数： 运行 src/calibrate_mouse.py，根据你的 iPhone 型号，测出屏幕边缘的极限 HID 步数，并填入主程序的 HID_MAX_X 和 HID_MAX_Y 中。
+
+点火运行：
+
+```
+cd src
+python main_versaios.py
+```
+## 💡 开发者笔记 (Developer Notes)：
+在开发过程中，我们发现 iOS 针对非原装蓝牙鼠标具有底层强制加速机制（跟踪速度居中时，放大倍率约 2.8 倍）。
+不要试图在 PC 端通过调整窗口分辨率（如 UxPlay 的 -s 参数）来修复坐标偏移，这是无效的。唯一的解法是在 Python 控制端进行降维截断映射。
+```
+iPhone 16 标准版实测物理极限步数参考： HID_MAX_X = 140, HID_MAX_Y = 310。
+```

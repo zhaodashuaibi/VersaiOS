@@ -1,0 +1,11 @@
+# Python 缓存
+__pycache__/
+*.py[cod]
+
+# 系统隐藏文件
+.DS_Store
+Thumbs.db
+
+# 环境变量与机密信息 (绝对不能把 API Key 传上去！)
+.env
+config.ini
