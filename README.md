@@ -51,12 +51,23 @@ PC 端需运行 iOS 投屏软件（如基于 AirPlay 协议的 UxPlay）。
 
 配置参数： 打开 src/main_versaios.py，填入你的 Gemini API Key 以及对应的串口号（如 COM3）。
 
-校准步数： 运行 src/calibrate_mouse.py，根据你的 iPhone 型号，测出屏幕边缘的极限 HID 步数，并填入主程序的 HID_MAX_X 和 HID_MAX_Y 中。
-
-点火运行：
+校准步数： 退出烧录程序之后运行 src/calibrate_mouse.py，根据你的 iPhone 型号，测出屏幕边缘的极限 HID 步数:
 
 ```
 cd src
+python calibrate_mouse.py
+```
+填入主程序的 HID_MAX_X 和 HID_MAX_Y 中。
+
+确保PC与iPhone在同一局域网内，在iPhone上使用屏幕镜像投屏至PC:
+
+```
+cd src
+python main.py
+```
+点火运行：
+
+```
 python main_versaios.py
 ```
 ## 💡 开发者笔记 (Developer Notes)：
@@ -64,4 +75,10 @@ python main_versaios.py
 不要试图在 PC 端通过调整窗口分辨率（如 UxPlay 的 -s 参数）来修复坐标偏移，这是无效的。唯一的解法是在 Python 控制端进行降维截断映射。
 ```
 iPhone 16 标准版实测物理极限步数参考： HID_MAX_X = 140, HID_MAX_Y = 310。
+```
+为了实测AI的视觉层对点击位置坐标的识别准确情况，可以运行库内的src/test_vision.py
+
+填入APIKEY后可以生成AI算出的坐标并用红圈标记出来，以图片形式存储。
+```
+python test_vision.py
 ```
