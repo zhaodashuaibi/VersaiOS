@@ -48,9 +48,9 @@ PC 端需运行 iOS 投屏软件（如基于 AirPlay 协议的 UxPlay）。
 
 连接蓝牙： 保持开发板通过 USB 连接电脑，在 iPhone 蓝牙列表中连接名为 VersaiOS_Hand 的设备。
 
-配置参数： API Key 与串口等不再写进代码，请任选其一方式配置：
-- **推荐** 在 `src` 目录下复制 `config.example.ini` 为 `config.ini`，填入 `api_key`、`com_port`、`window_title`（`config.ini` 已被 git 忽略，不会提交）；
-- 或设置环境变量：`VERSAIOS_API_KEY`、`VERSAIOS_COM_PORT`、`VERSAIOS_WINDOW_TITLE`。
+配置参数： API Key、串口、投屏窗口名与 HID 校准步数等不再写进代码，而是集中在配置层，请任选其一方式配置：
+- **推荐** 在 `src` 目录下复制 `config.example.ini` 为 `config.ini`，填入 `api_key`、`com_port`、`window_title`、`hid_max_x`、`hid_max_y`（`config.ini` 已被 git 忽略，不会提交）；
+- 或设置环境变量：`VERSAIOS_API_KEY`、`VERSAIOS_COM_PORT`、`VERSAIOS_WINDOW_TITLE`、`VERSAIOS_HID_MAX_X`、`VERSAIOS_HID_MAX_Y`。
 
 校准步数： 退出烧录程序之后运行 src/calibrate_mouse.py，根据你的 iPhone 型号，测出屏幕边缘的极限 HID 步数:
 
@@ -58,7 +58,7 @@ PC 端需运行 iOS 投屏软件（如基于 AirPlay 协议的 UxPlay）。
 cd src
 python calibrate_mouse.py
 ```
-填入主程序的 HID_MAX_X 和 HID_MAX_Y 中。
+将测得的步数填入 `config.ini` 的 `hid_max_x`、`hid_max_y`（或设置环境变量 `VERSAIOS_HID_MAX_X`、`VERSAIOS_HID_MAX_Y`）。
 
 确保PC与iPhone在同一局域网内，在iPhone上使用屏幕镜像投屏至PC:
 
@@ -77,9 +77,16 @@ python main_versaios.py
 ```
 iPhone 16 标准版实测物理极限步数参考： HID_MAX_X = 140, HID_MAX_Y = 310。
 ```
-为了实测AI的视觉层对点击位置坐标的识别准确情况，可以运行库内的src/test_vision.py
-
-填入APIKEY后可以生成AI算出的坐标并用红圈标记出来，以图片形式存储。
+为了实测AI的视觉层对点击位置坐标的识别准确情况，可以运行库内的src/test_vision.py。
+确保已通过 `config.ini` 或环境变量配置好 API Key 后，再执行下列命令，即可生成带红圈标记的调试图片：
 ```
 python test_vision.py
 ```
+## 📝 更新说明 (Changelog)
+
+- **配置抽离与安全性提升**
+  - 不再在代码中硬编码 Gemini API Key、串口号、投屏窗口名等敏感或环境相关参数，统一通过 `src/config.py` 读取 `config.ini` / 环境变量。
+  - 新增 `config.example.ini`，引导用户复制为 `config.ini` 并填写 `api_key`、`com_port`、`window_title`、`hid_max_x`、`hid_max_y`，避免误把私密信息提交到 Git。
+- **HID 校准与 Prompt 配置统一化**
+  - HID 极限步数 (`hid_max_x` / `hid_max_y`) 由 `calibrate_mouse.py` 校准后写入 `config.ini`，主程序通过 `config.get_hid_max_x()` / `get_hid_max_y()` 统一读取，实现多机多型号可配置。
+  - 高精度 UI 点击的系统 Prompt 已抽离到 `config.get_system_prompt()` 中，如需调整点击策略或语言风格，只需修改该函数（或扩展为从独立 Prompt 文件加载），无需改动业务逻辑代码。

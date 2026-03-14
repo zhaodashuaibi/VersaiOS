@@ -1,6 +1,6 @@
 from vision_engine import VersaiOSVision
 from ai_brain import VersaiOSAgent
-from config import get_api_key, get_com_port, get_window_title
+from config import get_api_key, get_com_port, get_window_title, get_hid_max_x, get_hid_max_y
 import serial
 import time
 
@@ -56,13 +56,10 @@ def main():
             plan = agent.analyze_ui_and_plan(frame, instruction)
 
             if plan and "x_ratio" in plan and "y_ratio" in plan:
-
-                # ---  你的专属绝对物理映射 ---
-                HID_MAX_X = 140
-                HID_MAX_Y = 310
-
-                target_x = int(HID_MAX_X * plan["x_ratio"])
-                target_y = int(HID_MAX_Y * plan["y_ratio"])
+                hid_max_x = get_hid_max_x()
+                hid_max_y = get_hid_max_y()
+                target_x = int(hid_max_x * plan["x_ratio"])
+                target_y = int(hid_max_y * plan["y_ratio"])
 
                 print(
                     f"🎯 [AI 决策] X比例:{plan['x_ratio']:.2f}, Y比例:{plan['y_ratio']:.2f} -> 绝对步数:({target_x},{target_y})")

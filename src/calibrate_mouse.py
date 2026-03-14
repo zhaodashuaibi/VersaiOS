@@ -1,14 +1,13 @@
 import serial
 import time
-
-# ⚠️ 填入你的真实串口号
-COM_PORT = "COM3"
+from config import get_com_port
 
 
 def main():
+    com_port = get_com_port()
     print(">>> [VersaiOS] 正在连接 ESP32 机械手...")
     try:
-        esp32 = serial.Serial(COM_PORT, 115200, timeout=1)
+        esp32 = serial.Serial(com_port, 115200, timeout=1)
         time.sleep(2)
     except Exception as e:
         print(f"❌ 连接失败: {e}")
@@ -20,6 +19,7 @@ def main():
     print("玩法：我们会向手机发送一个极限坐标 (比如 X=250)。")
     print("观察你的手机屏幕，看看光标是不是刚好碰到了屏幕的最右侧边缘。")
     print("如果光标没碰到边缘，说明数字太小；如果光标卡在边缘且感觉‘撞墙’了，说明数字太大。")
+    print("测好后请将数值填入 src/config.ini 的 hid_max_x、hid_max_y。")
     print("===========================================\n")
 
     while True:
