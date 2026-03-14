@@ -1,14 +1,18 @@
 from vision_engine import VersaiOSVision
 from ai_brain import VersaiOSAgent
+from config import get_api_key, get_window_title
 from PIL import ImageDraw
 import time
 
 
 def main():
-    # 请确保这里填的是极其精确的投屏窗口名
-    vision = VersaiOSVision(window_title="Direct3D12 Renderer")
+    api_key = get_api_key()
+    if not api_key:
+        print("❌ 未配置 API Key。请设置环境变量 VERSAIOS_API_KEY 或在 src/config.ini 中配置 api_key。")
+        return
 
-    agent = VersaiOSAgent(api_key="YOUR_API_KEY_HERE")
+    vision = VersaiOSVision(window_title=get_window_title())
+    agent = VersaiOSAgent(api_key=api_key)
 
     print("等待投屏画面稳定... (请确保投屏窗口没有被最小化)")
     time.sleep(2)

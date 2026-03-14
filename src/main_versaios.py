@@ -1,26 +1,28 @@
 from vision_engine import VersaiOSVision
 from ai_brain import VersaiOSAgent
+from config import get_api_key, get_com_port, get_window_title
 import serial
 import time
-import sys
-
-# ================= 配置区 =================
-WINDOW_TITLE = "Direct3D12 Renderer"  # 投屏窗口名
-API_KEY = "YOUR_API_KEY_HERE"  # Gemini API Key
-COM_PORT = "COM3"  # 你的 ESP32 串口号
-
-
-# ==========================================
 
 def main():
     print("==================================================")
     print("        🚀 VersaiOS AI Agent 已启动       ")
     print("==================================================")
 
+    api_key = get_api_key()
+    if not api_key:
+        print("❌ 未配置 Gemini API Key。请任选其一：")
+        print("   1. 设置环境变量: set VERSAIOS_API_KEY=你的Key")
+        print("   2. 在 src 目录下创建 config.ini，写入 [versaios] 段和 api_key=你的Key")
+        return
+
+    com_port = get_com_port()
+    window_title = get_window_title()
+
     # 1. 挂载物理机械手 (在循环外只连接一次，防止单片机反复重启)
     try:
         print(">>> [系统] 正在接通物理神经链路...")
-        esp32 = serial.Serial(COM_PORT, 115200, timeout=1)
+        esp32 = serial.Serial(com_port, 115200, timeout=1)
         time.sleep(2)  # 给 ESP32 两秒钟重启和重连蓝牙的时间
         print(">>> [系统] 机械手已就绪！")
     except Exception as e:
@@ -28,8 +30,8 @@ def main():
         return
 
     # 2. 初始化眼睛和大脑
-    vision = VersaiOSVision(window_title=WINDOW_TITLE)
-    agent = VersaiOSAgent(api_key=API_KEY)
+    vision = VersaiOSVision(window_title=window_title)
+    agent = VersaiOSAgent(api_key=api_key)
 
     # 3. 进入无限循环模式
     try:

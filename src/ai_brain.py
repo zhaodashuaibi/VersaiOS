@@ -5,7 +5,7 @@ from PIL import Image
 
 
 class VersaiOSAgent:
-    def __init__(self, api_key, model_name="gemini-2.5-flash"):
+    def __init__(self, api_key, model_name="gemini-3-flash-preview"):
         """
         初始化 VersaiOS 的 Gemini 视觉大脑 (基于最新版 google.genai SDK)
         """

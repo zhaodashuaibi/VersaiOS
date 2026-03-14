@@ -27,8 +27,7 @@
 ```text
 [ 👁️ 眼睛层 ] -> [ 🧠 大脑层 ] -> [ ⚡ 神经层 ] -> [ 🦾 物理执行层 ]
 
-  PC 投屏软件    Python 主控端      USB 串口通讯      ESP32-S3 (BLE)      iPhone
-(如 UxPlay)   (Gemini Vision)   (Baud:115200)   (HID Mouse 协议)  (辅助触控光标)
+  PC 投屏软件 -> Python 主控端 -> USB 串口通讯 -> ESP32-S3 -> iPhone
 ```
 ## 🛠️ 硬件与环境依赖 (Requirements)
 硬件： ESP32 开发板（实测型号：ESP32-S3-N16R8）。
@@ -49,7 +48,9 @@ PC 端需运行 iOS 投屏软件（如基于 AirPlay 协议的 UxPlay）。
 
 连接蓝牙： 保持开发板通过 USB 连接电脑，在 iPhone 蓝牙列表中连接名为 VersaiOS_Hand 的设备。
 
-配置参数： 打开 src/main_versaios.py，填入你的 Gemini API Key 以及对应的串口号（如 COM3）。
+配置参数： API Key 与串口等不再写进代码，请任选其一方式配置：
+- **推荐** 在 `src` 目录下复制 `config.example.ini` 为 `config.ini`，填入 `api_key`、`com_port`、`window_title`（`config.ini` 已被 git 忽略，不会提交）；
+- 或设置环境变量：`VERSAIOS_API_KEY`、`VERSAIOS_COM_PORT`、`VERSAIOS_WINDOW_TITLE`。
 
 校准步数： 退出烧录程序之后运行 src/calibrate_mouse.py，根据你的 iPhone 型号，测出屏幕边缘的极限 HID 步数:
 
