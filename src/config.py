@@ -2,6 +2,9 @@
 VersaiOS 配置：从环境变量或 config.ini 读取，避免将 API Key 等写进代码。
 """
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 # 环境变量名
 ENV_API_KEY = "VERSAIOS_API_KEY"
@@ -23,7 +26,8 @@ def _load_ini_if_exists():
             if parser.has_section("versaios"):
                 config = dict(parser["versaios"])
     except Exception:
-        pass
+        # 配置读取属于外部资源操作：必须记录详细错误但不中断启动
+        logger.exception("读取 config.ini 失败，将回退到环境变量/默认值。")
     return config
 
 

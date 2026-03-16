@@ -1,5 +1,11 @@
 import os
 import subprocess
+import logging
+from logging_setup import setup_logging
+
+
+setup_logging()
+logger = logging.getLogger(__name__)
 
 
 def start_versaios_receiver():
@@ -19,10 +25,13 @@ def start_versaios_receiver():
 
     # 强制清理旧的、可能损坏的缓存（如果有）
     if os.path.exists(env["GST_REGISTRY"]):
-        os.remove(env["GST_REGISTRY"])
-        print(">>> [VersaiOS] 已清理旧的解码器缓存。")
+        try:
+            os.remove(env["GST_REGISTRY"])  # 外部资源：文件删除
+            logger.info("已清理旧的解码器缓存。path=%s", env["GST_REGISTRY"])
+        except Exception:
+            logger.exception("清理解码器缓存失败。path=%s", env["GST_REGISTRY"])
 
-    print(">>> [VersaiOS] 正在挂载独立的 GStreamer 解码矩阵...")
+    logger.info("正在挂载独立的 GStreamer 解码矩阵...")
 
     uxplay_exe = os.path.join(current_dir, "uxplay.exe")
 
@@ -31,13 +40,16 @@ def start_versaios_receiver():
             [uxplay_exe, "-p","-n", "VersaiOS_Screen"],
             env=env
         )
-        print(">>> [VersaiOS] 视觉引擎已就绪，请使用 iPhone 发起屏幕镜像。")
+        logger.info("视觉引擎已就绪，请使用 iPhone 发起屏幕镜像。")
         process.wait()
     except FileNotFoundError:
-        print("错误：未找到 uxplay.exe，请确认提取步骤。")
+        logger.error("未找到 uxplay.exe，请确认提取步骤。path=%s", uxplay_exe)
     except KeyboardInterrupt:
-        print("\n>>> [VersaiOS] 安全关闭视觉引擎...")
-        process.terminate()
+        logger.info("收到 KeyboardInterrupt，安全关闭视觉引擎...")
+        try:
+            process.terminate()
+        except Exception:
+            logger.exception("终止 uxplay 进程失败。")
 
 
 if __name__ == "__main__":

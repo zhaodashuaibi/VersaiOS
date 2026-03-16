@@ -4,6 +4,9 @@ import numpy as np
 import mss
 import pygetwindow as gw
 from PIL import Image
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class VersaiOSVision:
@@ -36,8 +39,8 @@ class VersaiOSVision:
                 "width": win.width,
                 "height": win.height
             }
-        except Exception as e:
-            print(f"获取窗口坐标失败: {e}")
+        except Exception:
+            logger.exception("获取窗口坐标失败。window_title=%r", self.window_title)
             return None
 
     def grab_frame_for_ai(self):
@@ -75,7 +78,10 @@ class VersaiOSVision:
 # 单元测试：实时视觉预览流
 # ==========================================
 if __name__ == "__main__":
-    print(">>> [VersaiOS Vision] 正在启动视觉捕获测试...")
+    from logging_setup import setup_logging
+
+    setup_logging()
+    logger.info("正在启动视觉捕获测试。")
 
     # 实例化我们的“眼睛”
     vision = VersaiOSVision(window_title="Direct3D12 Renderer")
@@ -92,7 +98,7 @@ if __name__ == "__main__":
             # 计算帧率 (FPS)
             fps_frame_count += 1
             if time.time() - fps_start_time >= 1.0:
-                print(f">>> [VersaiOS] 视觉采样率: {fps_frame_count} FPS")
+                logger.info("视觉采样率: %s FPS", fps_frame_count)
                 fps_frame_count = 0
                 fps_start_time = time.time()
 
@@ -111,4 +117,4 @@ if __name__ == "__main__":
         time.sleep(0.01)
 
     cv2.destroyAllWindows()
-    print(">>> [VersaiOS Vision] 视觉流已关闭。")
+    logger.info("视觉流已关闭。")
