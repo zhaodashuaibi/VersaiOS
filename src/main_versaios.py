@@ -50,6 +50,11 @@ def main():
         logger.info("正在接通物理神经链路。com_port=%s", com_port)
         esp32 = serial.Serial(com_port, 115200, timeout=1)  # 外部资源：串口打开
         time.sleep(2)  # 给 ESP32 两秒钟重启和重连蓝牙的时间
+        #同步硬件边界
+        init_cmd = f"SET:{get_hid_max_x()},{get_hid_max_y()}\n"
+        esp32.write(init_cmd.encode("utf-8"))
+        logger.info("已同步硬件边界参数: %s", init_cmd.strip())
+
         logger.info("机械手已就绪。")
     except Exception:
         logger.exception("机械手连接失败。com_port=%s", com_port)

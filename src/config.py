@@ -66,15 +66,15 @@ def _int_or(s, default):
 
 
 def get_hid_max_x():
-    """HID X 轴极限步数（校准后填入 config.ini）。默认 140（参考 iPhone 16）。"""
+    """HID X 轴极限步数（校准后填入 config.ini）。"""
     raw = os.environ.get(ENV_HID_MAX_X) or _ini.get("hid_max_x", "").strip()
-    return _int_or(raw, 140)
+    return _int_or(raw, 780)
 
 
 def get_hid_max_y():
-    """HID Y 轴极限步数（校准后填入 config.ini）。默认 310（参考 iPhone 16）。"""
+    """HID Y 轴极限步数（校准后填入 config.ini）。"""
     raw = os.environ.get(ENV_HID_MAX_Y) or _ini.get("hid_max_y", "").strip()
-    return _int_or(raw, 310)
+    return _int_or(raw, 1620)
 
 
 def get_system_prompt():
@@ -108,6 +108,9 @@ def get_system_prompt():
         - 指令：“点击 微信”图标
           - 错误坐标：在“微信”两个字上。
           - 正确坐标：在那个绿色的、圆角的图标图案正中心。
+          
+        - 指令：“返回”
+          - 正确坐标：一般在屏幕左上角两个斜杠组成的图形中心。
 
         # 输出格式
         必须严格输出以下 JSON 格式，不要包含任何多余文字：

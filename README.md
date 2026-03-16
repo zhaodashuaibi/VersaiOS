@@ -16,31 +16,38 @@
 
 🛡️ 降维物理打击 (Hardware HID Attack)：** 电脑端 Python 大脑下发绝对坐标指令，ESP32 伪装成苹果官方蓝牙鼠标执行物理点击。从底层彻底绕过iOS 软件层面的自动化防护。
 
-🎯 独创“暴力归零”防加速算法 (Corner-Bumping Algorithm)：** iOS 系统内置了强制的蓝牙鼠标加速度机制（且无法通过常规协议关闭），导致绝对坐标定位极难。本项目在单片机 C++ 固件中植入了极客级的“左上角暴力归零 + 像素级匀速步进”算法，完美抵消了 iOS 的倍率放大，实现了指哪打哪的绝对坐标精准命中。
+🎯 算法升级：中线十字定位法 (Midline Crosshair Reset)：** 每次点击前，ESP32 会通过边缘撞击利用屏幕“平直边缘”将光标精准重置到绝对中心点 (0.5, 0.5)，完美解决 iOS 圆角/滑动边缘导致的光标偏航问题，为后续相对位移提供像素级基准。
 
 ---
 
 ## 🏗️ 系统架构 (Architecture)
 
-本系统的控制链路分为四个绝对隔离的层级，确保安全：
+本系统控制链路分为四个层级，并在 V2.0 完成了“软硬分离”：所有屏幕尺寸/边界计算逻辑上移到 Python；ESP32 仅做“纯执行引擎”，未来调整屏幕参数无需重复烧录固件。
 
 ```text
 [ 👁️ 眼睛层 ] -> [ 🧠 大脑层 ] -> [ ⚡ 神经层 ] -> [ 🦾 物理执行层 ]
 
   PC 投屏软件 -> Python 主控端 -> USB 串口通讯 -> ESP32-S3 -> iPhone
 ```
+
+### 🔌 串口通信协议（V2.0）
+
+- `SET:max_x,max_y`：Python 下发动态屏幕边界（相对鼠标引擎的“跨屏总步数”）。
+- `REL:dx,dy`：纯相对位移（用于交互式校准/遥控）。
+- `CLICK:x,y`：接收目标后由固件自动执行“中线校准 -> 相对滑行 -> 点击”。
+
 ## 🛠️ 硬件与环境依赖 (Requirements)
 硬件： ESP32 开发板（实测型号：ESP32-S3-N16R8）。
 
-iOS 设置： * 开启 辅助触控 (AssistiveTouch)。
+iOS 设置：
 
-将 跟踪速度 (Tracking Speed) 调至正中间。
-
-关闭 指针动画 (Pointer Animations)。
+- 开启 **辅助触控 (AssistiveTouch)**。
+- 关闭 **指针动画 (Pointer Animations)**（必须）。
+- 将 **跟踪速度 (Tracking Speed)** 固定为同一档位（**强烈建议调到最小**），避免相对位移出现倍率漂移。
 
 软件环境： * Python 3.8+ (依赖请见 requirements.txt)
 
-Arduino IDE (需手动安装 T-vK 的 ESP32-BLE-Mouse 库，并建议将 esp32 core 降级至 2.0.17 以避免编译错误)
+Arduino IDE (需手动安装 T-vK 的 ESP32-BLE-Mouse库 https://github.com/T-vK/ESP32-BLE-Mouse ，并建议将 esp32 core 降级至 2.0.17 以避免编译错误)
 
 PC 端需运行 iOS 投屏软件（如基于 AirPlay 协议的 UxPlay）。
 ## 🚀 开始 (Start)
@@ -52,13 +59,25 @@ PC 端需运行 iOS 投屏软件（如基于 AirPlay 协议的 UxPlay）。
 - **推荐** 在 `src` 目录下复制 `config.example.ini` 为 `config.ini`，填入 `api_key`、`com_port`、`window_title`、`hid_max_x`、`hid_max_y`（`config.ini` 已被 git 忽略，不会提交）；
 - 或设置环境变量：`VERSAIOS_API_KEY`、`VERSAIOS_COM_PORT`、`VERSAIOS_WINDOW_TITLE`、`VERSAIOS_HID_MAX_X`、`VERSAIOS_HID_MAX_Y`。
 
-校准步数： 退出烧录程序之后运行 src/calibrate_mouse.py，根据你的 iPhone 型号，测出屏幕边缘的极限 HID 步数:
+### 🎮 校准步数（V2.0：交互式遥控器）
+
+V2.0 起，`hid_max_x/hid_max_y` 表示“跨越整块屏幕所需的**相对总步数**”（用于 `SET:max_x,max_y`），不再是旧版的绝对极限坐标。
+
+退出烧录程序后运行 `src/calibrate_mouse.py`，使用 **w/a/s/d + 步数** 的方式像游戏一样遥控光标并累加总步数，最终得到跨屏总步数：
 
 ```
 cd src
 python calibrate_mouse.py
 ```
-将测得的步数填入 `config.ini` 的 `hid_max_x`、`hid_max_y`（或设置环境变量 `VERSAIOS_HID_MAX_X`、`VERSAIOS_HID_MAX_Y`）。
+
+示例（具体交互以脚本提示为准）：
+
+- `d 100`：向右移动 100 步
+- `a 50`：向左移动 50 步
+- `w 30`：向上移动 30 步
+- `s 30`：向下移动 30 步
+
+将测得的跨屏总步数填入 `config.ini` 的 `hid_max_x`、`hid_max_y`（或设置环境变量 `VERSAIOS_HID_MAX_X`、`VERSAIOS_HID_MAX_Y`）。
 
 确保PC与iPhone在同一局域网内，在iPhone上使用屏幕镜像投屏至PC:
 
@@ -71,18 +90,29 @@ python main.py
 ```
 python main_versaios.py
 ```
+
+### 🧩 V2.0 配置迁移提示（重要）
+
+- 如果你曾在 `config.ini` 中填过旧版“绝对坐标/极限坐标”的 `hid_max_x/hid_max_y`，请**清理并重新校准**为 V2.0 的“跨屏相对总步数”。
+- 使用新版本前，请务必在 iOS 设置中关闭“指针动画”，并将“跟踪速度”固定档位（建议最小），否则会严重影响相对位移准确性。
+
 ## 💡 开发者笔记 (Developer Notes)：
-在开发过程中，我们发现 iOS 针对非原装蓝牙鼠标具有底层强制加速机制（跟踪速度居中时，放大倍率约 2.8 倍）。
-不要试图在 PC 端通过调整窗口分辨率（如 UxPlay 的 -s 参数）来修复坐标偏移，这是无效的。唯一的解法是在 Python 控制端进行降维截断映射。
-```
-iPhone 16 标准版实测物理极限步数参考： HID_MAX_X = 140, HID_MAX_Y = 310。
-```
+V2.0 的相对鼠标引擎将“屏幕尺寸/边界映射”逻辑上移到 Python，并通过 `SET:max_x,max_y` 与固件同步，避免频繁改固件。
+
 为了实测AI的视觉层对点击位置坐标的识别准确情况，可以运行库内的src/test_vision.py。
 确保已通过 `config.ini` 或环境变量配置好 API Key 后，再执行下列命令，即可生成带红圈标记的调试图片：
 ```
 python test_vision.py
 ```
 ## 📝 更新说明 (Changelog)
+
+- **V2.0 - 相对鼠标引擎与动态校准重构**
+  - 彻底软硬分离：屏幕尺寸/边界计算逻辑上移到 Python，ESP32 变为纯执行引擎。
+  - 引入“中线十字定位法”：点击前自动重置到 (0.5, 0.5) 作为相对位移基准，显著提升 iOS 圆角/滑动边缘场景的稳定性。
+  - 新串口协议：`SET:max_x,max_y` / `REL:dx,dy` / `CLICK:x,y`。
+  - `main_versaios.py`：连接串口后会同步下发边界参数（对应 `SET`）。
+  - `config.py`：`hid_max_x/hid_max_y` 默认值体系切换为相对步数（建议使用 `calibrate_mouse.py` 重新测量）。
+  - `calibrate_mouse.py`：史诗级重构为“交互式遥控器”，支持 w/a/s/d + 步数并自动累加跨屏总步数。
 
 - **配置抽离与安全性提升**
   - 不再在代码中硬编码 Gemini API Key、串口号、投屏窗口名等敏感或环境相关参数，统一通过 `src/config.py` 读取 `config.ini` / 环境变量。
