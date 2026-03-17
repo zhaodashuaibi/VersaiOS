@@ -7,11 +7,16 @@ import logging
 logger = logging.getLogger(__name__)
 
 # 环境变量名
-ENV_API_KEY = "VERSAIOS_API_KEY"
 ENV_COM_PORT = "VERSAIOS_COM_PORT"
 ENV_WINDOW_TITLE = "VERSAIOS_WINDOW_TITLE"
 ENV_HID_MAX_X = "VERSAIOS_HID_MAX_X"
 ENV_HID_MAX_Y = "VERSAIOS_HID_MAX_Y"
+
+# 新版：通用 LLM 配置（推荐用这些环境变量/ini 字段）
+ENV_LLM_PROVIDER = "VERSAIOS_LLM_PROVIDER"  # gemini | openai_compatible
+ENV_LLM_API_KEY = "VERSAIOS_LLM_API_KEY"
+ENV_LLM_MODEL = "VERSAIOS_LLM_MODEL"
+ENV_LLM_BASE_URL = "VERSAIOS_LLM_BASE_URL"
 
 
 def _load_ini_if_exists():
@@ -34,10 +39,44 @@ def _load_ini_if_exists():
 _ini = _load_ini_if_exists()
 
 
-def get_api_key():
-    """Gemini API Key：优先环境变量 VERSAIOS_API_KEY，其次 config.ini 中的 api_key。"""
-    key = os.environ.get(ENV_API_KEY) or _ini.get("api_key", "").strip()
+def get_llm_provider() -> str:
+    """
+    LLM 提供方：
+    - gemini：使用 Google Gemini（google-genai SDK）
+    - openai_compatible：使用 OpenAI 兼容接口（OpenAI / DeepSeek / 通义千问兼容等，取决于 base_url）
+    """
+    raw = (os.environ.get(ENV_LLM_PROVIDER) or _ini.get("llm_provider", "")).strip().lower()
+    return raw or "gemini"
+
+
+def get_llm_api_key():
+    """
+    LLM API Key：优先 VERSAIOS_LLM_API_KEY，其次 config.ini 的 llm_api_key。
+    """
+    key = os.environ.get(ENV_LLM_API_KEY) or _ini.get("llm_api_key", "").strip()
     return key if key else None
+
+
+def get_llm_model() -> str:
+    """LLM 模型名：可在环境变量/ini 中覆盖，否则按 provider 给默认值。"""
+    raw = (os.environ.get(ENV_LLM_MODEL) or _ini.get("llm_model", "")).strip()
+    if raw:
+        return raw
+    provider = get_llm_provider()
+    if provider == "openai_compatible":
+        return "gpt-4.1-mini"
+    return "gemini-3-flash-preview"
+
+
+def get_llm_base_url():
+    """
+    OpenAI 兼容接口 base_url（仅 openai_compatible 需要）：
+    - OpenAI: https://api.openai.com/v1
+    - DeepSeek: https://api.deepseek.com
+    - 其他兼容端点：按各家文档填写到 /v1 或根路径
+    """
+    raw = (os.environ.get(ENV_LLM_BASE_URL) or _ini.get("llm_base_url", "")).strip()
+    return raw if raw else None
 
 
 def get_com_port():

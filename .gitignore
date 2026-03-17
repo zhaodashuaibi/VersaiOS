@@ -9,3 +9,7 @@ Thumbs.db
 # 环境变量与机密信息 (绝对不能把 API Key 传上去！)
 .env
 config.ini
+src/config.ini
+
+# UxPlay 运行时缓存（会自动生成/变化）
+UxPlay/gst_registry.bin
