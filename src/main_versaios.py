@@ -1,6 +1,15 @@
 from vision_engine import VersaiOSVision
 from ai_brain import VersaiOSAgent
-from config import get_api_key, get_com_port, get_window_title, get_hid_max_x, get_hid_max_y
+from config import (
+    get_llm_api_key,
+    get_llm_provider,
+    get_llm_model,
+    get_llm_base_url,
+    get_com_port,
+    get_window_title,
+    get_hid_max_x,
+    get_hid_max_y,
+)
 from logging_setup import setup_logging
 import logging
 import serial
@@ -35,11 +44,11 @@ def main():
     logger.info("        VersaiOS AI Agent 已启动       ")
     logger.info("==================================================")
 
-    api_key = get_api_key()
+    api_key = get_llm_api_key()
     if not api_key:
-        logger.error("未配置 Gemini API Key。请任选其一：")
-        logger.error("1) 设置环境变量: set VERSAIOS_API_KEY=你的Key")
-        logger.error("2) 在 src 目录下创建 config.ini，写入 [versaios] 段和 api_key=你的Key")
+        logger.error("未配置 LLM API Key。请任选其一：")
+        logger.error("1) 设置环境变量: set VERSAIOS_LLM_API_KEY=你的Key")
+        logger.error("2) 在 src 目录下创建 config.ini，写入 [versaios] 段和 llm_api_key=你的Key")
         return
 
     com_port = get_com_port()
@@ -62,7 +71,12 @@ def main():
 
     # 2. 初始化眼睛和大脑
     vision = VersaiOSVision(window_title=window_title)
-    agent = VersaiOSAgent(api_key=api_key)
+    agent = VersaiOSAgent(
+        provider=get_llm_provider(),
+        api_key=api_key,
+        model_name=get_llm_model(),
+        base_url=get_llm_base_url(),
+    )
 
     # 3. 进入无限循环模式
     try:

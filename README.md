@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Hardware: ESP32-S3](https://img.shields.io/badge/Hardware-ESP32--S3-blue.svg)]()
-[![AI: Gemini Vision](https://img.shields.io/badge/AI_Brain-Gemini_Pro_Vision-orange.svg)]()
+[![AI: VLM](https://img.shields.io/badge/AI_Brain-Multi_Provider-orange.svg)]()
 
 **VersaiOS** 是一个基于“视觉大模型 (VLM) + 硬件级 HID 注入”的次世代 iOS 跨端物理控制系统。
 
@@ -12,7 +12,7 @@
 
 ## ✨ 核心亮点 (Core Features)
 
-🧠 视觉大脑 (Vision-Language AI)：** 接入 Gemini 视觉大模型，无需繁琐的 UI 树 (XML) 解析。直接输入自然语言（如：“点击微信”或“点右上角的红色关闭按钮”），AI 即可自动理解屏幕语义并返回目标相对坐标。
+🧠 视觉大脑 (Vision-Language AI)：** 支持多家视觉大模型（Gemini / OpenAI 兼容接口等），无需繁琐的 UI 树 (XML) 解析。直接输入自然语言（如：“点击微信”或“点右上角的红色关闭按钮”），AI 即可自动理解屏幕语义并返回目标相对坐标。
 
 🛡️ 降维物理打击 (Hardware HID Attack)：** 电脑端 Python 大脑下发绝对坐标指令，ESP32 伪装成苹果官方蓝牙鼠标执行物理点击。从底层彻底绕过iOS 软件层面的自动化防护。
 
@@ -55,9 +55,9 @@ PC 端需运行 iOS 投屏软件（如基于 AirPlay 协议的 UxPlay）。
 
 连接蓝牙： 保持开发板通过 USB 连接电脑，在 iPhone 蓝牙列表中连接名为 VersaiOS_Hand 的设备。
 
-配置参数： API Key、串口、投屏窗口名与 HID 校准步数等不再写进代码，而是集中在配置层，请任选其一方式配置：
-- **推荐** 在 `src` 目录下复制 `config.example.ini` 为 `config.ini`，填入 `api_key`、`com_port`、`window_title`、`hid_max_x`、`hid_max_y`（`config.ini` 已被 git 忽略，不会提交）；
-- 或设置环境变量：`VERSAIOS_API_KEY`、`VERSAIOS_COM_PORT`、`VERSAIOS_WINDOW_TITLE`、`VERSAIOS_HID_MAX_X`、`VERSAIOS_HID_MAX_Y`。
+配置参数：LLM（模型提供方/Key/模型名/端点）、串口、投屏窗口名与 HID 校准步数等不再写进代码，而是集中在配置层，请任选其一方式配置：
+- **推荐** 在 `src` 目录下复制 `config.example.ini` 为 `config.ini`，填写 `llm_provider`、`llm_api_key`、`llm_model`（如使用 OpenAI 兼容接口再填 `llm_base_url`），以及 `com_port`、`window_title`、`hid_max_x`、`hid_max_y`（`config.ini` 已被 git 忽略，不会提交）；
+- 或设置环境变量：`VERSAIOS_LLM_PROVIDER`、`VERSAIOS_LLM_API_KEY`、`VERSAIOS_LLM_MODEL`、`VERSAIOS_LLM_BASE_URL`、`VERSAIOS_COM_PORT`、`VERSAIOS_WINDOW_TITLE`、`VERSAIOS_HID_MAX_X`、`VERSAIOS_HID_MAX_Y`。
 
 ### 🎮 校准步数（V2.0：交互式遥控器）
 
@@ -79,15 +79,29 @@ python calibrate_mouse.py
 
 将测得的跨屏总步数填入 `config.ini` 的 `hid_max_x`、`hid_max_y`（或设置环境变量 `VERSAIOS_HID_MAX_X`、`VERSAIOS_HID_MAX_Y`）。
 
-确保PC与iPhone在同一局域网内，在iPhone上使用屏幕镜像投屏至PC:
+### 🖥️ 投屏接收端（独立模块：`UxPlay/`）
+
+投屏接收端与 VersaiOS 主程序已分离。先启动接收端，再在 iPhone 上发起「屏幕镜像」。
+
+```
+cd UxPlay
+python main.py
+```
+
+启动成功后会提示“视觉引擎已就绪…”。默认窗口名为 `VersaiOS_Screen`（可在 `src/config.ini` 的 `window_title` 配置中匹配该名称）。
+
+### 🧠 主控端（`src/`）
+
+安装依赖：
+
+```
+pip install -r requirements.txt
+```
+
+点火运行（主程序）：
 
 ```
 cd src
-python main.py
-```
-点火运行：
-
-```
 python main_versaios.py
 ```
 
@@ -96,27 +110,32 @@ python main_versaios.py
 - 如果你曾在 `config.ini` 中填过旧版“绝对坐标/极限坐标”的 `hid_max_x/hid_max_y`，请**清理并重新校准**为 V2.0 的“跨屏相对总步数”。
 - 使用新版本前，请务必在 iOS 设置中关闭“指针动画”，并将“跟踪速度”固定档位（建议最小），否则会严重影响相对位移准确性。
 
-## 💡 开发者笔记 (Developer Notes)：
-V2.0 的相对鼠标引擎将“屏幕尺寸/边界映射”逻辑上移到 Python，并通过 `SET:max_x,max_y` 与固件同步，避免频繁改固件。
+## 💡 开发者笔记 (Developer Notes)
 
-为了实测AI的视觉层对点击位置坐标的识别准确情况，可以运行库内的src/test_vision.py。
-确保已通过 `config.ini` 或环境变量配置好 API Key 后，再执行下列命令，即可生成带红圈标记的调试图片：
+- **目录职责**
+  - `UxPlay/`：投屏接收端（负责把 iPhone 画面接收到桌面窗口）
+  - `src/`：主控端（截图、调用 VLM、串口控制 ESP32 执行动作）
+
+- **运行顺序（重要）**
+  - 先启动 `UxPlay/main.py`，再启动 `src/main_versaios.py`
+  - 如果投屏窗口被最小化/不可见，很多截图方案会抓不到画面；请保持窗口可见（不最小化）
+
+- **窗口名匹配**
+  - `UxPlay/main.py` 默认窗口名是 `Direct3D12 Renderer`
+  - 主控端通过 `window_title` 定位窗口；找不到窗口时优先检查：窗口名是否一致、窗口是否存在/未最小化
+
+- **模型输出约束**
+  - 主控端要求模型返回**严格 JSON**，字段包含 `x_ratio/y_ratio`（0~1），可选 `reason`
+  - 如果你接入的 `openai_compatible` 端点不支持 `response_format`，代码会自动降级，但仍依赖提示词约束输出 JSON
+
+- **调试：验证坐标是否点准**
+  - 运行 `src/test_vision.py` 会生成带红圈的验证图片 `debug_target_result.png`
+
 ```
+cd src
 python test_vision.py
 ```
-## 📝 更新说明 (Changelog)
 
-- **V2.0 - 相对鼠标引擎与动态校准重构**
-  - 彻底软硬分离：屏幕尺寸/边界计算逻辑上移到 Python，ESP32 变为纯执行引擎。
-  - 引入“中线十字定位法”：点击前自动重置到 (0.5, 0.5) 作为相对位移基准，显著提升 iOS 圆角/滑动边缘场景的稳定性。
-  - 新串口协议：`SET:max_x,max_y` / `REL:dx,dy` / `CLICK:x,y`。
-  - `main_versaios.py`：连接串口后会同步下发边界参数（对应 `SET`）。
-  - `config.py`：`hid_max_x/hid_max_y` 默认值体系切换为相对步数（建议使用 `calibrate_mouse.py` 重新测量）。
-  - `calibrate_mouse.py`：史诗级重构为“交互式遥控器”，支持 w/a/s/d + 步数并自动累加跨屏总步数。
+## 📝 更新日志
 
-- **配置抽离与安全性提升**
-  - 不再在代码中硬编码 Gemini API Key、串口号、投屏窗口名等敏感或环境相关参数，统一通过 `src/config.py` 读取 `config.ini` / 环境变量。
-  - 新增 `config.example.ini`，引导用户复制为 `config.ini` 并填写 `api_key`、`com_port`、`window_title`、`hid_max_x`、`hid_max_y`，避免误把私密信息提交到 Git。
-- **HID 校准与 Prompt 配置统一化**
-  - HID 极限步数 (`hid_max_x` / `hid_max_y`) 由 `calibrate_mouse.py` 校准后写入 `config.ini`，主程序通过 `config.get_hid_max_x()` / `get_hid_max_y()` 统一读取，实现多机多型号可配置。
-  - 高精度 UI 点击的系统 Prompt 已抽离到 `config.get_system_prompt()` 中，如需调整点击策略或语言风格，只需修改该函数（或扩展为从独立 Prompt 文件加载），无需改动业务逻辑代码。
+本项目的版本变更统一维护在 `CHANGELOG.md`，请查看该文件。
