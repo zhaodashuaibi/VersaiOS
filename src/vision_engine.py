@@ -5,17 +5,19 @@ import mss
 import pygetwindow as gw
 from PIL import Image
 import logging
+from config import DEFAULT_WINDOW_TITLE, get_window_title
+
 
 logger = logging.getLogger(__name__)
 
 
 class VersaiOSVision:
-    def __init__(self, window_title="Direct3D12 Renderer"):
+    def __init__(self, window_title=None):
         """
         初始化视觉捕获引擎
         注意：投屏窗口名请在这里修改。
         """
-        self.window_title = window_title
+        self.window_title = window_title or DEFAULT_WINDOW_TITLE
         self.sct = mss.mss()  # 初始化极速截图器
 
     def _get_window_rect(self):
@@ -84,7 +86,7 @@ if __name__ == "__main__":
     logger.info("正在启动视觉捕获测试。")
 
     # 实例化我们的“眼睛”
-    vision = VersaiOSVision(window_title="Direct3D12 Renderer")
+    vision = VersaiOSVision(window_title=get_window_title())
 
     # 用于计算 FPS 的变量
     fps_start_time = time.time()

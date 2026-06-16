@@ -121,7 +121,7 @@ python main_versaios.py
   - 如果投屏窗口被最小化/不可见，很多截图方案会抓不到画面；请保持窗口可见（不最小化）
 
 - **窗口名匹配**
-  - `UxPlay/main.py` 默认窗口名是 `Direct3D12 Renderer`
+  - `UxPlay/main.py` 默认窗口名是 `VersaiOS_Screen`（与 `src/config.py` 的 `DEFAULT_WINDOW_TITLE` 一致）
   - 主控端通过 `window_title` 定位窗口；找不到窗口时优先检查：窗口名是否一致、窗口是否存在/未最小化
 
 - **模型输出约束**

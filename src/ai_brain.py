@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from typing import Any, Dict, Optional, Tuple
 from PIL import Image
 from config import (
@@ -13,18 +14,17 @@ from config import (
 logger = logging.getLogger(__name__)
 
 
-def _parse_and_validate_plan(raw_text: str) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
-    """
-    Gemini 输出 schema（必须）：
-    - x_ratio: 0-1 浮点
-    - y_ratio: 0-1 浮点
-    - reason: 可选字符串
-    """
-    try:
-        obj = json.loads(raw_text)
-    except Exception as e:
-        return None, f"json_decode_failed: {e}"
+def _strip_json_fence(raw_text: str) -> str:
+    """去掉 LLM 可能包裹的 ```json ... ``` 围栏。"""
+    text = raw_text.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text, count=1)
+        text = re.sub(r"\s*```$", "", text, count=1)
+    return text.strip()
 
+
+def validate_plan_dict(obj: Any) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+    """校验 plan 字典 schema（x_ratio/y_ratio 必填，reason 可选）。"""
     if not isinstance(obj, dict):
         return None, "schema_invalid: root_not_object"
 
@@ -55,6 +55,21 @@ def _parse_and_validate_plan(raw_text: str) -> Tuple[Optional[Dict[str, Any]], O
         return None, "schema_invalid: reason_not_string"
 
     return {"x_ratio": x, "y_ratio": y, **({"reason": reason} if reason is not None else {})}, None
+
+
+def _parse_and_validate_plan(raw_text: str) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+    """
+    LLM 输出 schema（必须）：
+    - x_ratio: 0-1 浮点
+    - y_ratio: 0-1 浮点
+    - reason: 可选字符串
+    """
+    try:
+        obj = json.loads(_strip_json_fence(raw_text))
+    except Exception as e:
+        return None, f"json_decode_failed: {e}"
+
+    return validate_plan_dict(obj)
 
 
 class VersaiOSAgent:

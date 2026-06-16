@@ -1,6 +1,6 @@
 from vision_engine import VersaiOSVision
 from ai_brain import VersaiOSAgent
-from config import get_llm_api_key, get_llm_provider, get_llm_model, get_llm_base_url, get_window_title
+from config import get_llm_api_key, get_llm_provider, get_llm_model, get_llm_base_url, get_window_title, validate_llm_config
 from PIL import ImageDraw
 import time
 import logging
@@ -12,17 +12,15 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-    api_key = get_llm_api_key()
-    if not api_key:
-        logger.error(
-            "未配置 LLM API Key。请设置环境变量 VERSAIOS_LLM_API_KEY 或在 src/config.ini 中配置 llm_api_key。"
-        )
+    config_err = validate_llm_config()
+    if config_err:
+        logger.error("LLM 配置无效：%s", config_err)
         return
 
     vision = VersaiOSVision(window_title=get_window_title())
     agent = VersaiOSAgent(
         provider=get_llm_provider(),
-        api_key=api_key,
+        api_key=get_llm_api_key(),
         model_name=get_llm_model(),
         base_url=get_llm_base_url(),
     )

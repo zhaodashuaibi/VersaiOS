@@ -3,6 +3,7 @@ VersaiOS 配置：从环境变量或 config.ini 读取，避免将 API Key 等�
 """
 import os
 import logging
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,9 @@ ENV_LLM_PROVIDER = "VERSAIOS_LLM_PROVIDER"  # gemini | openai_compatible
 ENV_LLM_API_KEY = "VERSAIOS_LLM_API_KEY"
 ENV_LLM_MODEL = "VERSAIOS_LLM_MODEL"
 ENV_LLM_BASE_URL = "VERSAIOS_LLM_BASE_URL"
+
+# 与 UxPlay/main.py 的 -n 参数保持一致
+DEFAULT_WINDOW_TITLE = "VersaiOS_Screen"
 
 
 def _load_ini_if_exists():
@@ -89,11 +93,11 @@ def get_com_port():
 
 
 def get_window_title():
-    """投屏窗口标题：环境变量或 config.ini，默认 Direct3D12 Renderer。"""
+    """投屏窗口标题：环境变量或 config.ini，默认 VersaiOS_Screen。"""
     return (
         os.environ.get(ENV_WINDOW_TITLE)
         or _ini.get("window_title", "").strip()
-        or "Direct3D12 Renderer"
+        or DEFAULT_WINDOW_TITLE
     )
 
 
@@ -107,13 +111,25 @@ def _int_or(s, default):
 def get_hid_max_x():
     """HID X 轴极限步数（校准后填入 config.ini）。"""
     raw = os.environ.get(ENV_HID_MAX_X) or _ini.get("hid_max_x", "").strip()
-    return _int_or(raw, 780)
+    return _int_or(raw, 140)
 
 
 def get_hid_max_y():
     """HID Y 轴极限步数（校准后填入 config.ini）。"""
     raw = os.environ.get(ENV_HID_MAX_Y) or _ini.get("hid_max_y", "").strip()
-    return _int_or(raw, 1620)
+    return _int_or(raw, 310)
+
+
+def validate_llm_config() -> Optional[str]:
+    """启动前校验 LLM 配置，返回错误信息或 None。"""
+    if not get_llm_api_key():
+        return "未配置 llm_api_key / VERSAIOS_LLM_API_KEY"
+    provider = get_llm_provider()
+    if provider not in ("gemini", "openai_compatible"):
+        return f"未知 llm_provider={provider!r}（支持 gemini / openai_compatible）"
+    if provider == "openai_compatible" and not get_llm_base_url():
+        return "openai_compatible 需要配置 llm_base_url / VERSAIOS_LLM_BASE_URL"
+    return None
 
 
 def get_system_prompt():

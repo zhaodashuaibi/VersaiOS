@@ -1,5 +1,5 @@
 from vision_engine import VersaiOSVision
-from ai_brain import VersaiOSAgent
+from ai_brain import VersaiOSAgent, validate_plan_dict
 from config import (
     get_llm_api_key,
     get_llm_provider,
@@ -9,34 +9,12 @@ from config import (
     get_window_title,
     get_hid_max_x,
     get_hid_max_y,
+    validate_llm_config,
 )
 from logging_setup import setup_logging
 import logging
 import serial
 import time
-from typing import Any, Dict, Optional, Tuple
-
-
-setup_logging()
-logger = logging.getLogger(__name__)
-
-
-def _validate_plan_for_actuation(plan: Any) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
-    if not isinstance(plan, dict):
-        return None, "plan_not_dict"
-    if "x_ratio" not in plan or "y_ratio" not in plan:
-        return None, "missing_required_fields"
-    try:
-        x = float(plan["x_ratio"])
-        y = float(plan["y_ratio"])
-    except Exception as e:
-        return None, f"ratio_not_number: {e}"
-    if not (0.0 <= x <= 1.0) or not (0.0 <= y <= 1.0):
-        return None, f"ratio_out_of_range x={x} y={y}"
-    reason = plan.get("reason", None)
-    if reason is not None and not isinstance(reason, str):
-        return None, "reason_not_string"
-    return {"x_ratio": x, "y_ratio": y, **({"reason": reason} if reason is not None else {})}, None
 
 
 def main():
@@ -45,10 +23,10 @@ def main():
     logger.info("==================================================")
 
     api_key = get_llm_api_key()
-    if not api_key:
-        logger.error("未配置 LLM API Key。请任选其一：")
-        logger.error("1) 设置环境变量: set VERSAIOS_LLM_API_KEY=你的Key")
-        logger.error("2) 在 src 目录下创建 config.ini，写入 [versaios] 段和 llm_api_key=你的Key")
+    config_err = validate_llm_config()
+    if config_err:
+        logger.error("LLM 配置无效：%s", config_err)
+        logger.error("请在 src/config.ini 或环境变量中配置 llm_provider / llm_api_key / llm_base_url。")
         return
 
     com_port = get_com_port()
@@ -59,7 +37,7 @@ def main():
         logger.info("正在接通物理神经链路。com_port=%s", com_port)
         esp32 = serial.Serial(com_port, 115200, timeout=1)  # 外部资源：串口打开
         time.sleep(2)  # 给 ESP32 两秒钟重启和重连蓝牙的时间
-        #同步硬件边界
+        # 同步硬件边界
         init_cmd = f"SET:{get_hid_max_x()},{get_hid_max_y()}\n"
         esp32.write(init_cmd.encode("utf-8"))
         logger.info("已同步硬件边界参数: %s", init_cmd.strip())
@@ -100,7 +78,7 @@ def main():
             # 4. 大脑进行空间推理
             plan = agent.analyze_ui_and_plan(frame, instruction)
 
-            safe_plan, err = _validate_plan_for_actuation(plan)
+            safe_plan, err = validate_plan_dict(plan)
             if safe_plan:
                 hid_max_x = get_hid_max_x()
                 hid_max_y = get_hid_max_y()

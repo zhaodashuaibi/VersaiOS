@@ -21,6 +21,27 @@
   - 不再在仓库内保留 `src/config.ini`，改为仅提供 `src/config.example.ini` 作为模板（运行时使用 `src/config.ini`）
   - `src/config.ini` 已加入 `.gitignore`，避免误提交密钥
 
+## V2.5.1（2026-06-16）
+
+- **配置默认值对齐**
+  - `config.py` 新增 `DEFAULT_WINDOW_TITLE = "VersaiOS_Screen"`，与 `UxPlay/main.py` 的 `-n` 参数保持一致
+  - `get_window_title()`、`config.example.ini`、`vision_engine.py` 默认窗口名由 `Direct3D12 Renderer` 修正为 `VersaiOS_Screen`
+  - `get_hid_max_x()` / `get_hid_max_y()` 未配置时的默认值由 `780/1620` 调整为 `140/310`，与 `config.example.ini` 及 V2.0 校准说明一致
+
+- **启动前 LLM 配置校验**
+  - 新增 `validate_llm_config()`：启动时检查 API Key、`llm_provider` 合法性，以及 `openai_compatible` 是否配置了 `llm_base_url`
+  - `main_versaios.py`、`test_vision.py` 在初始化 Agent 前调用，配置缺失时提前退出并给出明确提示
+
+- **Plan 解析与校验增强**
+  - 将 plan 校验逻辑提取为 `validate_plan_dict()`（`ai_brain.py`），`main_versaios.py` 复用同一函数，移除重复校验代码
+  - 新增 `_strip_json_fence()`，可解析 LLM 返回的 ` ```json ... ``` ` 围栏格式，降低 JSON 解析失败率
+
+- **文档修正**
+  - `README.md` 中窗口名说明与代码默认值保持一致（`VersaiOS_Screen`）
+
+- **兼容性提示**
+  - 若本地 `config.ini` 中 `window_title` 仍为旧值 `Direct3D12 Renderer`，请改为 `VersaiOS_Screen`，或删除该项以使用新默认值
+
 ## V2.0
 
 - **相对鼠标引擎与动态校准重构**
