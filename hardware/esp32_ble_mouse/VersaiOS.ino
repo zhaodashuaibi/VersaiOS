@@ -58,7 +58,7 @@ void loop() {
             screen_max_y = y;
             Serial.printf(">>> [配置] 收到 Python 下发参数: 最大步数 X=%ld, Y=%ld\n", screen_max_x, screen_max_y);
         }
-        // 2. 交互测试指令（供 calibrate_mouse.py 使用）
+        // 2. 交互测试指令（供 GUI 校准模块使用）
         else if (sscanf(cmd.c_str(), "REL:%d,%d", &x, &y) == 2) {
             move_relative_safe(x, y);
             Serial.printf(">>> [测试] 纯相对移动: dx=%d, dy=%d\n", x, y);

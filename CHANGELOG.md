@@ -2,6 +2,25 @@
 
 本项目采用“尽量可读”的更新记录方式：按日期归档，描述对使用者有影响的变化。
 
+## V3.0（2026-07-24）
+
+- **图形化控制台正式发布**
+  - 新增 `gui/` 包，将用户交互拆分为两个阶段：
+    - `gui/calibration_module.py`：阶段一（模型配置 + 串口连接 + HID 步数校准 + 配置保存）
+    - `gui/control_module.py`：阶段二（启动 UxPlay 接收端 + 启动主控端 + 自然语言指令输入 + 实时日志）
+  - 入口统一为 `python gui_app.py`，用户无需再手动进入 `src/` 或 `UxPlay/` 运行任何脚本。
+
+- **测试功能并入 GUI**
+  - 在“阶段一”新增“测试硬件点击”按钮，替代 `src/test_hardware.py`。
+  - 在“阶段二”新增“测试视觉（截图 + 标红目标）”按钮，替代 `src/test_vision.py`，结果保存为 `assets/debug_target_result.png` 并弹窗预览。
+
+- **移除冗余 CLI 脚本**
+  - 删除 `src/calibrate_mouse.py`、`src/test_hardware.py`、`src/test_vision.py`。
+  - 核心库（`ai_brain.py`、`vision_engine.py`、`config.py`、`logging_setup.py`）与主控引擎（`main_versaios.py`）继续保留在 `src/`，作为 GUI 后端调用。
+
+- **文档重构**
+  - 重写 `README.md`：以 GUI 流程为主线，命令行方式作为备用；修正固件路径、依赖安装目录等不一致之处。
+
 ## V2.5
 
 - **投屏接收端与主程序分离**
@@ -30,7 +49,7 @@
 
 - **启动前 LLM 配置校验**
   - 新增 `validate_llm_config()`：启动时检查 API Key、`llm_provider` 合法性，以及 `openai_compatible` 是否配置了 `llm_base_url`
-  - `main_versaios.py`、`test_vision.py` 在初始化 Agent 前调用，配置缺失时提前退出并给出明确提示
+  - `main_versaios.py` 在初始化 Agent 前调用，配置缺失时提前退出并给出明确提示
 
 - **Plan 解析与校验增强**
   - 将 plan 校验逻辑提取为 `validate_plan_dict()`（`ai_brain.py`），`main_versaios.py` 复用同一函数，移除重复校验代码

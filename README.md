@@ -14,9 +14,11 @@
 
 🧠 视觉大脑 (Vision-Language AI)：** 支持多家视觉大模型（Gemini / OpenAI 兼容接口等），无需繁琐的 UI 树 (XML) 解析。直接输入自然语言（如：“点击微信”或“点右上角的红色关闭按钮”），AI 即可自动理解屏幕语义并返回目标相对坐标。
 
-🛡️ 降维物理打击 (Hardware HID Attack)：** 电脑端 Python 大脑下发绝对坐标指令，ESP32 伪装成苹果官方蓝牙鼠标执行物理点击。从底层彻底绕过iOS 软件层面的自动化防护。
+🛡️ 降维物理打击 (Hardware HID Attack)：** 电脑端 Python 大脑下发绝对坐标指令，ESP32 伪装成苹果官方蓝牙鼠标执行物理点击。从底层彻底绕过 iOS 软件层面的自动化防护。
 
 🎯 算法升级：中线十字定位法 (Midline Crosshair Reset)：** 每次点击前，ESP32 会通过边缘撞击利用屏幕“平直边缘”将光标精准重置到绝对中心点 (0.5, 0.5)，完美解决 iOS 圆角/滑动边缘导致的光标偏航问题，为后续相对位移提供像素级基准。
+
+🖥️ 图形化控制台：** V2.5 起提供 `gui_app.py` 一站式图形界面，将准备工作与日常使用整合为两个阶段，无需手动进入 `src/` 运行任何脚本。
 
 ---
 
@@ -36,7 +38,10 @@
 - `REL:dx,dy`：纯相对位移（用于交互式校准/遥控）。
 - `CLICK:x,y`：接收目标后由固件自动执行“中线校准 -> 相对滑行 -> 点击”。
 
+---
+
 ## 🛠️ 硬件与环境依赖 (Requirements)
+
 硬件： ESP32 开发板（实测型号：ESP32-S3-N16R8）。
 
 iOS 设置：
@@ -45,80 +50,126 @@ iOS 设置：
 - 关闭 **指针动画 (Pointer Animations)**（必须）。
 - 将 **跟踪速度 (Tracking Speed)** 固定为同一档位（**强烈建议调到最小**），避免相对位移出现倍率漂移。
 
-软件环境： * Python 3.8+ (依赖请见 requirements.txt)
+软件环境：
 
-Arduino IDE (需手动安装 T-vK 的 ESP32-BLE-Mouse库 https://github.com/T-vK/ESP32-BLE-Mouse ，并建议将 esp32 core 降级至 2.0.17 以避免编译错误)
+- Python 3.10+（依赖请见 `requirements.txt`）
+- Arduino IDE（需手动安装 T-vK 的 ESP32-BLE-Mouse 库 https://github.com/T-vK/ESP32-BLE-Mouse ，并建议将 esp32 core 降级至 2.0.17 以避免编译错误）
+- PC 端需运行 iOS 投屏软件（如基于 AirPlay 协议的 UxPlay，已内置在 `UxPlay/`）
 
-PC 端需运行 iOS 投屏软件（如基于 AirPlay 协议的 UxPlay）。
+---
+
 ## 🚀 开始 (Start)
-烧录固件： 将 hardware/esp32_ble_mouse/esp32_ble_mouse.ino 烧录至 ESP32-S3 开发板。
 
-连接蓝牙： 保持开发板通过 USB 连接电脑，在 iPhone 蓝牙列表中连接名为 VersaiOS_Hand 的设备。
+### 1. 烧录固件
 
-配置参数：LLM（模型提供方/Key/模型名/端点）、串口、投屏窗口名与 HID 校准步数等不再写进代码，而是集中在配置层，请任选其一方式配置：
-- **推荐** 在 `src` 目录下复制 `config.example.ini` 为 `config.ini`，填写 `llm_provider`、`llm_api_key`、`llm_model`（如使用 OpenAI 兼容接口再填 `llm_base_url`），以及 `com_port`、`window_title`、`hid_max_x`、`hid_max_y`（`config.ini` 已被 git 忽略，不会提交）；
-- 或设置环境变量：`VERSAIOS_LLM_PROVIDER`、`VERSAIOS_LLM_API_KEY`、`VERSAIOS_LLM_MODEL`、`VERSAIOS_LLM_BASE_URL`、`VERSAIOS_COM_PORT`、`VERSAIOS_WINDOW_TITLE`、`VERSAIOS_HID_MAX_X`、`VERSAIOS_HID_MAX_Y`。
+将 `hardware/esp32_ble_mouse/VersaiOS.ino` 烧录至 ESP32-S3 开发板。
 
-### 🎮 校准步数（V2.0：交互式遥控器）
+### 2. 连接蓝牙
+
+保持开发板通过 USB 连接电脑，在 iPhone 蓝牙列表中连接名为 **VersaiOS Mouse** 的设备（固件代码中 `BleMouse` 构造函数传入的设备名）。
+
+### 3. 安装依赖
+
+```bash
+pip install -r requirements.txt
+```
+
+> 注意：`requirements.txt` 位于项目根目录，请在项目根目录下执行。
+
+### 4. 启动图形化控制台（推荐）
+
+```bash
+python gui_app.py
+```
+
+`gui_app.py` 会引导你完成两个阶段：
+
+1. **阶段一：准备**
+   - 配置 LLM 提供方、API Key、模型名、串口号；
+   - 通过方向键遥控光标完成 HID 步数校准，并保存 `hid_max_x` / `hid_max_y`。
+2. **阶段二：运行**
+   - 启动 `UxPlay` 投屏接收端；
+   - 在 iPhone 上发起屏幕镜像；
+   - 启动主控端，输入自然语言指令（如“点击微信”）执行自动化操作。
+
+`gui_app.py` 启动时会自动从 `src/config.example.ini` 创建 `src/config.ini`（`config.ini` 已被 git 忽略，不会提交）。
+
+---
+
+## 🎮 校准步数（V2.0：交互式遥控器）
 
 V2.0 起，`hid_max_x/hid_max_y` 表示“跨越整块屏幕所需的**相对总步数**”（用于 `SET:max_x,max_y`），不再是旧版的绝对极限坐标。
 
-退出烧录程序后运行 `src/calibrate_mouse.py`，使用 **w/a/s/d + 步数** 的方式像游戏一样遥控光标并累加总步数，最终得到跨屏总步数：
+### 图形界面方式（推荐）
 
-```
-cd src
-python calibrate_mouse.py
-```
+在 `gui_app.py` 的“阶段一：准备”中：
 
-示例（具体交互以脚本提示为准）：
+1. 输入串口号并点击“连接 ESP32”；
+2. 使用 **W/A/S/D + 步长** 遥控光标移动；
+3. 到达屏幕边缘后点击“归零”，再向反方向移动到底；
+4. 将最终累计步数填入 `hid_max_x` / `hid_max_y`，点击“保存全部配置”。
 
-- `d 100`：向右移动 100 步
-- `a 50`：向左移动 50 步
-- `w 30`：向上移动 30 步
-- `s 30`：向下移动 30 步
+---
 
-将测得的跨屏总步数填入 `config.ini` 的 `hid_max_x`、`hid_max_y`（或设置环境变量 `VERSAIOS_HID_MAX_X`、`VERSAIOS_HID_MAX_Y`）。
+## 🖥️ 投屏接收端（独立模块：`UxPlay/`）
 
-### 🖥️ 投屏接收端（独立模块：`UxPlay/`）
+投屏接收端与 VersaiOS 主程序已分离。你可以通过图形界面一键启动，也可以手动启动：
 
-投屏接收端与 VersaiOS 主程序已分离。先启动接收端，再在 iPhone 上发起「屏幕镜像」。
-
-```
+```bash
 cd UxPlay
 python main.py
 ```
 
-启动成功后会提示“视觉引擎已就绪…”。默认窗口名为 `VersaiOS_Screen`（可在 `src/config.ini` 的 `window_title` 配置中匹配该名称）。
+启动成功后会提示“视觉引擎已就绪…”。默认窗口名为 `VersaiOS_Screen`（已在 `UxPlay/main.py` 中固定，与 `src/config.py` 的 `DEFAULT_WINDOW_TITLE` 一致）。
 
-### 🧠 主控端（`src/`）
+---
 
-安装依赖：
+## 🧠 主控端（`src/`）
 
-```
-pip install -r requirements.txt
-```
+### 图形界面方式（推荐）
 
-点火运行（主程序）：
+在 `gui_app.py` 的“阶段二：运行”中：
 
-```
+1. 先启动“投屏接收端”，然后在 iPhone 上发起屏幕镜像；
+2. 启动“主控端”；
+3. 在“自然语言指令”输入框中输入指令并发送，例如：
+   - `点击微信`
+   - `点右上角的红色关闭按钮`
+
+主控端运行日志会实时显示在界面下方的日志区域。
+
+### 命令行方式（备用）
+
+```bash
 cd src
 python main_versaios.py
 ```
 
-### 🧩 V2.0 配置迁移提示（重要）
+---
+
+## 🧩 V2.0 配置迁移提示（重要）
 
 - 如果你曾在 `config.ini` 中填过旧版“绝对坐标/极限坐标”的 `hid_max_x/hid_max_y`，请**清理并重新校准**为 V2.0 的“跨屏相对总步数”。
 - 使用新版本前，请务必在 iOS 设置中关闭“指针动画”，并将“跟踪速度”固定档位（建议最小），否则会严重影响相对位移准确性。
 
+---
+
 ## 💡 开发者笔记 (Developer Notes)
 
 - **目录职责**
+  - `gui/`：图形化控制台模块（`gui_app.py` 拆分为 `calibration_module.py` 与 `control_module.py`）
   - `UxPlay/`：投屏接收端（负责把 iPhone 画面接收到桌面窗口）
   - `src/`：主控端（截图、调用 VLM、串口控制 ESP32 执行动作）
+  - `hardware/`：ESP32 固件源码
 
-- **运行顺序（重要）**
-  - 先启动 `UxPlay/main.py`，再启动 `src/main_versaios.py`
-  - 如果投屏窗口被最小化/不可见，很多截图方案会抓不到画面；请保持窗口可见（不最小化）
+- **图形化流程（推荐）**
+  - 运行 `python gui_app.py` 完成全部操作；
+  - 阶段一负责模型配置与 HID 校准，阶段二负责接收端启动与指令交互；
+  - 无需手动运行 `src/` 或 `UxPlay/` 下的脚本。
+
+- **命令行运行顺序（备用）**
+  - 先启动 `UxPlay/main.py`，再启动 `src/main_versaios.py`；
+  - 如果投屏窗口被最小化/不可见，很多截图方案会抓不到画面；请保持窗口可见（不最小化）。
 
 - **窗口名匹配**
   - `UxPlay/main.py` 默认窗口名是 `VersaiOS_Screen`（与 `src/config.py` 的 `DEFAULT_WINDOW_TITLE` 一致）
@@ -129,12 +180,7 @@ python main_versaios.py
   - 如果你接入的 `openai_compatible` 端点不支持 `response_format`，代码会自动降级，但仍依赖提示词约束输出 JSON
 
 - **调试：验证坐标是否点准**
-  - 运行 `src/test_vision.py` 会生成带红圈的验证图片 `debug_target_result.png`
-
-```
-cd src
-python test_vision.py
-```
+  - 在 `gui_app.py` 的“阶段二：运行”中点击“测试视觉（截图 + 标红目标）”，系统会截取当前画面、调用 VLM 预测目标位置并绘制红圈，结果保存为 `assets/debug_target_result.png` 同时弹窗预览。
 
 ## 📝 更新日志
 
