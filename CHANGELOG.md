@@ -2,6 +2,44 @@
 
 本项目采用“尽量可读”的更新记录方式：按日期归档，描述对使用者有影响的变化。
 
+## V3.0.1（2026-08-02）
+
+- **依赖清单修正**
+  - `requirements.txt`：新增 `numpy`、`customtkinter`。
+  - 所有依赖按运行场景分组并固定 major 版本：核心 / CLI、视觉处理、图形界面。
+  - 新增 README 说明：不同运行模式（CLI / GUI / vision-only）所需依赖组。
+
+- **图像上送安全化（`src/ai_brain.py`）**
+  - 发往 LLM 的截图统一先缩放（长边 ≤ 1280px）并压缩为 JPEG（质量 85），避免 base64 请求体过大。
+  - Gemini 路径优先调用 `client.files.upload` 上传图片，仅传递文件 URI；上传失败时自动回退到内联 bytes。
+  - OpenAI 兼容路径使用 `image_url` + JPEG base64 data URL，并保留 `response_format` 自动降级逻辑。
+  - 明确按 SDK 异常类型捕获，避免裸 `except Exception` 吞掉错误。
+
+- **异常处理收紧**
+  - `src/main_versaios.py`：串口相关异常捕获 `serial.SerialException` / `PermissionError` / `OSError`，不再吞掉无关错误。
+  - `src/vision_engine.py`：窗口定位与 mss 截图分别捕获 `_WINDOW_ERRORS` / `_MSS_ERRORS`。
+  - `src/ai_brain.py`：按 `ConnectionError`、`TimeoutError`、SDK 具体错误分类处理并保留重试逻辑。
+
+- **HID 未校准风险提示**
+  - `src/config.py`：新增 `DEFAULT_HID_MAX_X/Y` 常量与 `is_hid_calibrated()` 判断。
+  - `gui/calibration_module.py`：若 HID 步数未显式配置，界面显示橙色警告。
+  - `src/main_versaios.py`：CLI 启动时若使用默认值，日志输出校准警告。
+  - README 校准章节补充风险提示。
+
+- **启动前配置校验**
+  - `src/config.py`：识别 `config.example.ini` 复制来的 API Key 占位值，启动前直接提示填写真实 Key。
+  - `gui_app.py`：窗口标题版本号同步为 V3.0.1。
+
+- **日志初始化保护**
+  - `src/logging_setup.py`：增加进程级 `_setup_done` 标志；调用时先清空已有 handler 再统一格式，避免第三方库提前写入导致格式不一致。
+
+- **系统依赖说明**
+  - README 补充：Windows 需安装 Apple Bonjour；`UxPlay/gst_plugins/` 为 GStreamer 插件矩阵，首次运行自动生成 `gst_registry.bin`。
+
+- **项目整洁化**
+  - 删除 IDE 配置 `.idea/`、`.vscode/`、所有 `__pycache__`、运行时生成的 `assets/debug_target_result.png`、缓存 `UxPlay/gst_registry.bin`、安装器 `BonjourPSSetup.exe`。
+  - 更新 `.gitignore`：忽略 IDE 配置、调试图。
+
 ## V3.0（2026-07-24）
 
 - **图形化控制台正式发布**

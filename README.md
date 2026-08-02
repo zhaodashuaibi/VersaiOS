@@ -55,6 +55,9 @@ iOS 设置：
 - Python 3.10+（依赖请见 `requirements.txt`）
 - Arduino IDE（需手动安装 T-vK 的 ESP32-BLE-Mouse 库 https://github.com/T-vK/ESP32-BLE-Mouse ，并建议将 esp32 core 降级至 2.0.17 以避免编译错误）
 - PC 端需运行 iOS 投屏软件（如基于 AirPlay 协议的 UxPlay，已内置在 `UxPlay/`）
+- **系统级依赖（Windows）**：
+  - UxPlay 依赖 Apple Bonjour 服务发现；若系统未安装，请自行下载安装 Bonjour Print Services（或 iTunes 附带版本）。
+  - `UxPlay/gst_plugins/` 为 GStreamer 解码插件矩阵，需要 VC++ 运行时与系统多媒体组件支持；首次启动会自动生成 `gst_registry.bin`。
 
 ---
 
@@ -75,6 +78,15 @@ pip install -r requirements.txt
 ```
 
 > 注意：`requirements.txt` 位于项目根目录，请在项目根目录下执行。
+
+`requirements.txt` 已按运行场景分组并固定 major 版本，请勿随意升级：
+
+- **核心 / CLI**：`pyserial`、`google-genai`、`openai`
+- **视觉处理**：`numpy`、`opencv-python`、`Pillow`、`mss`、`pygetwindow`
+- **图形界面**：`customtkinter`
+
+如果你只需要命令行主控端而不使用 GUI，可以只安装核心+视觉依赖；
+`customtkinter` 仅在使用 `gui_app.py` 时需要。
 
 ### 4. 启动图形化控制台（推荐）
 
@@ -108,6 +120,8 @@ V2.0 起，`hid_max_x/hid_max_y` 表示“跨越整块屏幕所需的**相对总
 2. 使用 **W/A/S/D + 步长** 遥控光标移动；
 3. 到达屏幕边缘后点击“归零”，再向反方向移动到底；
 4. 将最终累计步数填入 `hid_max_x` / `hid_max_y`，点击“保存全部配置”。
+
+> ⚠️ 未校准的 HID 默认值（140/310）仅作占位，**直接使用会导致点击坐标偏移**。GUI 会在未显式配置时显示橙色警告，CLI 启动时也会在日志中提示。
 
 ---
 
@@ -178,6 +192,16 @@ python main_versaios.py
 - **模型输出约束**
   - 主控端要求模型返回**严格 JSON**，字段包含 `x_ratio/y_ratio`（0~1），可选 `reason`
   - 如果你接入的 `openai_compatible` 端点不支持 `response_format`，代码会自动降级，但仍依赖提示词约束输出 JSON
+
+- **SDK 版本约束**
+  - `google-genai`  major 版本锁定在 `1.x`：`client.files.upload` + `types.Part.from_uri/from_bytes` 等调用依赖该版本。
+  - `openai` major 版本锁定在 `1.x`：`chat.completions.create` + `image_url` 数据格式依赖该版本。
+  - 升级 major 版本前请务必先用最小样例验证图像输入与 JSON 输出是否正常。
+
+- **图像上送策略**
+  - 所有截图在发往 LLM 前会先缩放（长边 ≤ 1280px）并压缩为 JPEG（质量 85），避免 base64 请求体过大。
+  - Gemini 路径优先调用 `client.files.upload` 上传图片，只传递文件 URI；上传失败时自动回退到内联 bytes。
+  - OpenAI 兼容路径使用 `image_url` + JPEG base64 data URL；若你的端点支持公开图床 URL，可扩展 `ai_brain.py` 直接传 URL。
 
 - **调试：验证坐标是否点准**
   - 在 `gui_app.py` 的“阶段二：运行”中点击“测试视觉（截图 + 标红目标）”，系统会截取当前画面、调用 VLM 预测目标位置并绘制红圈，结果保存为 `assets/debug_target_result.png` 同时弹窗预览。

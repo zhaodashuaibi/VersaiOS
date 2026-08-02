@@ -1,17 +1,28 @@
+import base64
+import io
 import json
 import logging
+import os
 import re
+import tempfile
 from typing import Any, Dict, Optional, Tuple
+
 from PIL import Image
+
 from config import (
-    get_system_prompt,
     get_llm_api_key,
     get_llm_base_url,
     get_llm_model,
     get_llm_provider,
+    get_system_prompt,
 )
 
 logger = logging.getLogger(__name__)
+
+# 视觉输入统一压缩策略：长边不超过 1280px、JPEG 质量 85。
+# 可显著降低请求体大小，同时保留 UI 文字/图标细节。
+_MAX_IMAGE_LONG_SIDE = 1280
+_JPEG_QUALITY = 85
 
 
 def _strip_json_fence(raw_text: str) -> str:
@@ -21,6 +32,39 @@ def _strip_json_fence(raw_text: str) -> str:
         text = re.sub(r"^```(?:json)?\s*", "", text, count=1)
         text = re.sub(r"\s*```$", "", text, count=1)
     return text.strip()
+
+
+def _compress_image_to_jpeg(img: Image.Image) -> bytes:
+    """
+    将 PIL Image 缩放到合理尺寸并压缩为 JPEG bytes。
+    避免把原始 PNG 直接塞进请求体导致体积过大。
+    """
+    original_width, original_height = img.size
+    long_side = max(original_width, original_height)
+    if long_side > _MAX_IMAGE_LONG_SIDE:
+        ratio = _MAX_IMAGE_LONG_SIDE / long_side
+        new_size = (int(original_width * ratio), int(original_height * ratio))
+        img = img.resize(new_size, Image.Resampling.LANCZOS)
+        logger.debug("图像已缩放 %s -> %s", (original_width, original_height), new_size)
+
+    if img.mode in ("RGBA", "P"):
+        img = img.convert("RGB")
+
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=_JPEG_QUALITY, optimize=True)
+    jpeg_bytes = buf.getvalue()
+    logger.debug(
+        "图像已压缩为 JPEG: original=%s, jpeg_bytes=%d",
+        (original_width, original_height),
+        len(jpeg_bytes),
+    )
+    return jpeg_bytes
+
+
+def _image_to_data_url(jpeg_bytes: bytes) -> str:
+    """将 JPEG bytes 转为 OpenAI 兼容的 data URL。"""
+    b64 = base64.b64encode(jpeg_bytes).decode("ascii")
+    return f"data:image/jpeg;base64,{b64}"
 
 
 def validate_plan_dict(obj: Any) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
@@ -38,7 +82,7 @@ def validate_plan_dict(obj: Any) -> Tuple[Optional[Dict[str, Any]], Optional[str
         if isinstance(v, str):
             try:
                 return float(v.strip())
-            except Exception:
+            except (TypeError, ValueError):
                 return None
         return None
 
@@ -66,7 +110,7 @@ def _parse_and_validate_plan(raw_text: str) -> Tuple[Optional[Dict[str, Any]], O
     """
     try:
         obj = json.loads(_strip_json_fence(raw_text))
-    except Exception as e:
+    except json.JSONDecodeError as e:
         return None, f"json_decode_failed: {e}"
 
     return validate_plan_dict(obj)
@@ -95,9 +139,16 @@ class VersaiOSAgent:
 
         if self.provider == "gemini":
             logger.info("正在初始化 Gemini 客户端与模型。model=%s", self.model_name)
-            from google import genai  # lazy import
+            try:
+                from google import genai  # lazy import
+                from google.genai import types  # noqa: F401
+            except ImportError as e:
+                raise RuntimeError(
+                    "未安装 google-genai 依赖。请执行：pip install -r requirements.txt"
+                ) from e
 
             self._gemini_client = genai.Client(api_key=self.api_key)
+            self._gemini_types = types
             self._openai_client = None
         elif self.provider == "openai_compatible":
             logger.info(
@@ -107,18 +158,20 @@ class VersaiOSAgent:
             )
             try:
                 from openai import OpenAI  # type: ignore
-            except Exception as e:
+            except ImportError as e:
                 raise RuntimeError(
-                    "未安装 openai 依赖。请先 pip install -r requirements.txt（已包含 openai）。"
+                    "未安装 openai 依赖。请执行：pip install -r requirements.txt"
                 ) from e
 
             self._openai_client = OpenAI(api_key=self.api_key, base_url=self.base_url)
             self._gemini_client = None
         else:
-            raise ValueError(f"未知 llm_provider={self.provider!r}（支持 gemini / openai_compatible）。")
+            raise ValueError(f"未知 llm_provider={self.provider!r}（支持 gemini / openai_compatible）")
 
-    def analyze_ui_and_plan(self, frame_img: Image.Image, user_instruction: str, max_retries: int = 2):
-        # 💡 核心修复区：把狙击法则和用户的具体目标拼接成最终的 Prompt
+    def analyze_ui_and_plan(
+        self, frame_img: Image.Image, user_instruction: str, max_retries: int = 2
+    ) -> Optional[Dict[str, Any]]:
+        # 把狙击法则和用户的具体目标拼接成最终的 Prompt
         final_prompt = f"{get_system_prompt()}\n\n# 用户当前指令：\n{user_instruction}"
 
         logger.info("已获取视觉帧，开始推理。instruction=%r", user_instruction)
@@ -155,68 +208,161 @@ class VersaiOSAgent:
                     logger.debug("LLM reason=%r", plan.get("reason"))
                 return plan
 
+            except (ConnectionError, TimeoutError) as e:
+                logger.warning(
+                    "LLM 推理网络异常（attempt=%s/%s provider=%s）：%s",
+                    attempt,
+                    max_retries + 1,
+                    self.provider,
+                    e,
+                )
+            except RuntimeError:
+                # 初始化或 SDK 调用参数错误，重试无意义，直接抛出
+                raise
             except Exception:
-                logger.exception("LLM 推理调用异常（attempt=%s/%s provider=%s）。", attempt, max_retries + 1, self.provider)
+                logger.exception(
+                    "LLM 推理调用异常（attempt=%s/%s provider=%s）。",
+                    attempt,
+                    max_retries + 1,
+                    self.provider,
+                )
 
         logger.error("LLM plan 最终失败，已放弃。provider=%s last_raw=%r", self.provider, last_raw)
         return None
 
     def _generate_json_text(self, prompt: str, frame_img: Image.Image) -> Optional[str]:
-        if self.provider == "gemini":
-            from google.genai import types  # lazy import
+        jpeg_bytes = _compress_image_to_jpeg(frame_img)
 
+        if self.provider == "gemini":
+            return self._generate_with_gemini(prompt, jpeg_bytes)
+
+        if self.provider == "openai_compatible":
+            return self._generate_with_openai(prompt, jpeg_bytes)
+
+        raise ValueError(f"未知 provider={self.provider!r}")
+
+    def _generate_with_gemini(self, prompt: str, jpeg_bytes: bytes) -> Optional[str]:
+        from google.genai import types
+
+        # 优先上传到 Gemini File API，只传 URI，避免每次内嵌大 base64。
+        uploaded_file = None
+        tmp_path: Optional[str] = None
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+                tmp.write(jpeg_bytes)
+                tmp_path = tmp.name
+            uploaded_file = self._gemini_client.files.upload(file=tmp_path)
+            if not getattr(uploaded_file, "uri", None):
+                logger.warning("Gemini 文件上传未返回 URI，将回退到内联 bytes。")
+                uploaded_file = None
+            else:
+                logger.debug("Gemini 文件已上传：uri=%s", uploaded_file.uri)
+        except Exception:
+            logger.warning("Gemini 文件上传失败，将回退到内联 bytes。", exc_info=True)
+        finally:
+            # 删除临时文件，file 资源在服务端保留一段时间即可
+            if tmp_path:
+                try:
+                    os.remove(tmp_path)
+                except OSError as e:
+                    logger.warning("无法删除 Gemini 临时图片：%s", e)
+
+        contents: Any
+        if uploaded_file is not None:
+            contents = [
+                types.Content(
+                    role="user",
+                    parts=[
+                        types.Part.from_text(text=prompt),
+                        types.Part.from_uri(
+                            file_uri=uploaded_file.uri,
+                            mime_type=uploaded_file.mime_type or "image/jpeg",
+                        ),
+                    ],
+                )
+            ]
+        else:
+            contents = [
+                types.Content(
+                    role="user",
+                    parts=[
+                        types.Part.from_text(text=prompt),
+                        types.Part.from_bytes(data=jpeg_bytes, mime_type="image/jpeg"),
+                    ],
+                )
+            ]
+
+        try:
             response = self._gemini_client.models.generate_content(
                 model=self.model_name,
-                contents=[prompt, frame_img],
+                contents=contents,
                 config=types.GenerateContentConfig(
                     temperature=0.1,
                     response_mime_type="application/json",
                 ),
             )
-            return getattr(response, "text", None)
+        except Exception as e:
+            logger.error("Gemini generate_content 调用失败：%s", e)
+            raise
 
-        if self.provider == "openai_compatible":
-            # OpenAI 兼容：用 chat.completions，消息里混合 text + image_url
-            # 这里把 PIL.Image 转成 data URL，避免写临时文件
-            import base64
-            import io
+        text = getattr(response, "text", None)
+        if not text:
+            logger.warning("Gemini 返回空 text，response=%r", response)
+        return text
 
-            buf = io.BytesIO()
-            frame_img.save(buf, format="PNG")
-            data_b64 = base64.b64encode(buf.getvalue()).decode("ascii")
-            data_url = f"data:image/png;base64,{data_b64}"
+    def _generate_with_openai(self, prompt: str, jpeg_bytes: bytes) -> Optional[str]:
+        import openai
 
-            messages = [
-                {"role": "system", "content": "你必须严格只输出 JSON 对象，不要输出任何多余文字。"},
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {"type": "image_url", "image_url": {"url": data_url}},
-                    ],
-                },
-            ]
+        data_url = _image_to_data_url(jpeg_bytes)
 
-            kwargs: Dict[str, Any] = {
-                "model": self.model_name,
-                "messages": messages,
-                "temperature": 0.1,
-            }
+        messages = [
+            {"role": "system", "content": "你必须严格只输出 JSON 对象，不要输出任何多余文字。"},
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": {"url": data_url}},
+                ],
+            },
+        ]
 
-            # 某些 OpenAI 兼容实现支持强制 JSON 输出
-            kwargs["response_format"] = {"type": "json_object"}
+        kwargs: Dict[str, Any] = {
+            "model": self.model_name,
+            "messages": messages,
+            "temperature": 0.1,
+        }
+
+        # 某些 OpenAI 兼容实现支持强制 JSON 输出；若不支持则降级重试
+        attempts = [
+            {**kwargs, "response_format": {"type": "json_object"}},
+            kwargs,
+        ]
+
+        last_err: Optional[Exception] = None
+        for idx, call_kwargs in enumerate(attempts):
             try:
-                resp = self._openai_client.chat.completions.create(**kwargs)
-            except Exception:
-                # 兼容部分第三方端点不支持 response_format 参数的情况
-                logger.debug("openai_compatible 端点不支持 response_format，降级重试。", exc_info=True)
-                kwargs.pop("response_format", None)
-                resp = self._openai_client.chat.completions.create(**kwargs)
-            content = None
+                resp = self._openai_client.chat.completions.create(**call_kwargs)
+            except openai.BadRequestError as e:
+                # 大概率是 response_format 不被支持，继续第二次尝试
+                if idx == 0 and "response_format" in call_kwargs:
+                    logger.debug("openai_compatible 端点不支持 response_format，降级重试。error=%s", e)
+                    last_err = e
+                    continue
+                raise
+            except (openai.APIConnectionError, openai.RateLimitError, openai.InternalServerError):
+                # 网络/限流/服务端错误交给上层重试
+                raise
+            except openai.APIError as e:
+                logger.error("OpenAI 兼容端点返回错误：%s", e)
+                raise
+
             try:
                 content = resp.choices[0].message.content
-            except Exception:
+            except (AttributeError, IndexError) as e:
+                logger.warning("OpenAI 返回结构异常：%s", e)
                 content = None
             return content
 
-        raise ValueError(f"未知 provider={self.provider!r}")
+        if last_err is not None:
+            raise last_err
+        return None

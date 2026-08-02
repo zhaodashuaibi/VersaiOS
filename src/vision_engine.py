@@ -10,6 +10,10 @@ from config import DEFAULT_WINDOW_TITLE, get_window_title
 
 logger = logging.getLogger(__name__)
 
+# 视觉捕获相关的具体异常类型，避免 bare except 吞掉无关错误
+_MSS_ERRORS = (mss.exception.MSSException,)
+_WINDOW_ERRORS = (AttributeError, OSError, ValueError)
+
 
 class VersaiOSVision:
     def __init__(self, window_title=None):
@@ -41,8 +45,8 @@ class VersaiOSVision:
                 "width": win.width,
                 "height": win.height
             }
-        except Exception:
-            logger.exception("获取窗口坐标失败。window_title=%r", self.window_title)
+        except _WINDOW_ERRORS as e:
+            logger.warning("获取窗口坐标失败。window_title=%r error=%s", self.window_title, e)
             return None
 
     def grab_frame_for_ai(self):
@@ -53,8 +57,12 @@ class VersaiOSVision:
         if not rect:
             return None
 
-        # 从显存/内存中极速抓取像素
-        sct_img = self.sct.grab(rect)
+        try:
+            # 从显存/内存中极速抓取像素
+            sct_img = self.sct.grab(rect)
+        except _MSS_ERRORS as e:
+            logger.warning("mss 截图失败：%s", e)
+            return None
 
         # mss 抓取的是 BGRA 格式，我们需要转为标准的 RGB 供大模型使用
         img = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
@@ -69,7 +77,12 @@ class VersaiOSVision:
         if not rect:
             return None
 
-        sct_img = self.sct.grab(rect)
+        try:
+            sct_img = self.sct.grab(rect)
+        except _MSS_ERRORS as e:
+            logger.warning("mss 截图失败：%s", e)
+            return None
+
         # 转为 numpy 数组
         img_np = np.array(sct_img)
         # 丢弃 Alpha 通道 (透明度)，保留 BGR

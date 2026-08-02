@@ -10,6 +10,12 @@ import serial
 import customtkinter as ctk
 
 from .utils import load_existing_config, save_config_values
+from config import (
+    DEFAULT_HID_MAX_X,
+    DEFAULT_HID_MAX_Y,
+    is_hid_calibrated,
+    reload_config,
+)
 
 
 class CalibrationModule(ctk.CTkFrame):
@@ -130,6 +136,16 @@ class CalibrationModule(ctk.CTkFrame):
         self.hid_max_y_entry = ctk.CTkEntry(value_frame, width=120)
         self.hid_max_y_entry.grid(row=1, column=1, padx=5, pady=5)
 
+        # 未校准风险提示
+        self.calib_warning_label = ctk.CTkLabel(
+            calib_frame,
+            text="",
+            font=("Arial", 12, "bold"),
+            text_color="orange",
+            wraplength=500,
+        )
+        self.calib_warning_label.pack(pady=(5, 0))
+
         # 保存按钮
         ctk.CTkButton(
             self, text="保存全部配置", command=self._save_all_config,
@@ -153,8 +169,9 @@ class CalibrationModule(ctk.CTkFrame):
         self.model_entry.insert(0, cfg.get("llm_model", "gemini-3-flash-preview"))
         self.com_port_entry.insert(0, cfg.get("com_port", "COM3"))
         self.window_title_entry.insert(0, cfg.get("window_title", "VersaiOS_Screen"))
-        self.hid_max_x_entry.insert(0, cfg.get("hid_max_x", "140"))
-        self.hid_max_y_entry.insert(0, cfg.get("hid_max_y", "310"))
+        self.hid_max_x_entry.insert(0, cfg.get("hid_max_x", str(DEFAULT_HID_MAX_X)))
+        self.hid_max_y_entry.insert(0, cfg.get("hid_max_y", str(DEFAULT_HID_MAX_Y)))
+        self._refresh_calibration_warning()
 
     # ========================== 串口连接 ==========================
     def _connect_serial(self):
@@ -272,13 +289,28 @@ class CalibrationModule(ctk.CTkFrame):
                 "llm_model": self.model_entry.get().strip(),
                 "com_port": self.com_port_entry.get().strip() or "COM3",
                 "window_title": self.window_title_entry.get().strip() or "VersaiOS_Screen",
-                "hid_max_x": self.hid_max_x_entry.get().strip() or "140",
-                "hid_max_y": self.hid_max_y_entry.get().strip() or "310",
+                "hid_max_x": self.hid_max_x_entry.get().strip() or str(DEFAULT_HID_MAX_X),
+                "hid_max_y": self.hid_max_y_entry.get().strip() or str(DEFAULT_HID_MAX_Y),
             }
             save_config_values(updates)
-            self._set_status(f"配置已保存", "green")
+            reload_config()
+            self._refresh_calibration_warning()
+            self._set_status("配置已保存", "green")
         except Exception as e:
             self._set_status(f"保存失败: {e}", "red")
+
+    def _refresh_calibration_warning(self):
+        """根据 config 是否已显式配置 HID 步数更新风险提示。"""
+        if is_hid_calibrated():
+            self.calib_warning_label.configure(text="")
+        else:
+            self.calib_warning_label.configure(
+                text=(
+                    f"⚠️ HID 步数尚未显式配置（当前为默认值 "
+                    f"{DEFAULT_HID_MAX_X}/{DEFAULT_HID_MAX_Y}）。"
+                    "请点击坐标可能不准确，请先完成校准再保存。"
+                )
+            )
 
     # ========================== 状态提示 ==========================
     def _set_status(self, text: str, color: str = "gray"):

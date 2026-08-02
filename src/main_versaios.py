@@ -10,12 +10,16 @@ from config import (
     get_hid_max_x,
     get_hid_max_y,
     validate_llm_config,
+    is_hid_calibrated,
 )
 from logging_setup import setup_logging
 import logging
 import serial
 import time
+logger = logging.getLogger(__name__)
 
+# 具体异常类型：避免 bare except 吞掉错误栈
+_SERIAL_ERRORS = (serial.SerialException, PermissionError, OSError)
 
 def main():
     logger.info("==================================================")
@@ -32,6 +36,14 @@ def main():
     com_port = get_com_port()
     window_title = get_window_title()
 
+    if not is_hid_calibrated():
+        logger.warning(
+            "HID 步数尚未校准（使用默认值 %s/%s）。"
+            "请点击坐标可能不准确，请在 gui_app.py『阶段一』完成校准。",
+            get_hid_max_x(),
+            get_hid_max_y(),
+        )
+
     # 1. 挂载物理机械手 (在循环外只连接一次，防止单片机反复重启)
     try:
         logger.info("正在接通物理神经链路。com_port=%s", com_port)
@@ -43,21 +55,20 @@ def main():
         logger.info("已同步硬件边界参数: %s", init_cmd.strip())
 
         logger.info("机械手已就绪。")
-    except Exception:
-        logger.exception("机械手连接失败。com_port=%s", com_port)
+    except _SERIAL_ERRORS as e:
+        logger.error("机械手连接失败。com_port=%s error=%s", com_port, e)
         return
 
-    # 2. 初始化眼睛和大脑
-    vision = VersaiOSVision(window_title=window_title)
-    agent = VersaiOSAgent(
-        provider=get_llm_provider(),
-        api_key=api_key,
-        model_name=get_llm_model(),
-        base_url=get_llm_base_url(),
-    )
-
-    # 3. 进入无限循环模式
+    # 2. 初始化眼睛和大脑，并进入无限循环模式。初始化失败时也必须关闭串口。
     try:
+        vision = VersaiOSVision(window_title=window_title)
+        agent = VersaiOSAgent(
+            provider=get_llm_provider(),
+            api_key=api_key,
+            model_name=get_llm_model(),
+            base_url=get_llm_base_url(),
+        )
+
         while True:
             logger.info("-" * 50)
             instruction = input("请下达指令 (输入 'q' 退出): ")
@@ -99,8 +110,8 @@ def main():
                 command = f"CLICK:{target_x},{target_y}\n"
                 try:
                     esp32.write(command.encode("utf-8"))  # 外部资源：串口写
-                except Exception:
-                    logger.exception("串口写入失败，已跳过本次动作。command=%r", command)
+                except _SERIAL_ERRORS as e:
+                    logger.error("串口写入失败，已跳过本次动作。command=%r error=%s", command, e)
                     continue
 
                 logger.info("动作已执行，等待画面响应。")
@@ -110,15 +121,18 @@ def main():
 
     except KeyboardInterrupt:
         logger.info("被用户强制中断（KeyboardInterrupt）。")
+    except Exception:
+        logger.exception("VersaiOS 运行失败，正在安全关闭串口。")
     finally:
         # 无论如何，退出前优雅地关闭串口
         logger.info("正在断开机械手。")
         try:
             esp32.close()  # 外部资源：串口关闭
-        except Exception:
-            logger.exception("串口关闭失败。")
+        except _SERIAL_ERRORS as e:
+            logger.error("串口关闭失败。error=%s", e)
         logger.info("VersaiOS 已安全关闭。")
 
 
 if __name__ == "__main__":
+    setup_logging()
     main()

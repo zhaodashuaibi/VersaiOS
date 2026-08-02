@@ -1,7 +1,20 @@
-pyserial
-google-genai
-openai
-opencv-python
-Pillow
-mss
-pygetwindow
+# VersaiOS Python 依赖清单
+# 安装：python -m pip install -r requirements.txt
+# 所有版本均经过本地/CI 验证，请勿随意升级 major 版本。
+
+# ========== 核心 CLI / 主控端（src/main_versaios.py） ==========
+pyserial>=3.5,<4.0
+
+# 视觉大模型 SDK（二选一即可，同时安装以支持切换）
+google-genai>=1.0.0,<2.0.0
+openai>=1.0.0,<2.0.0
+
+# ========== 视觉处理（src/vision_engine.py） ==========
+numpy>=1.24.0,<2.0.0
+opencv-python>=4.8.0,<5.0.0
+Pillow>=10.0.0,<11.0.0
+mss>=9.0.0,<10.0.0
+pygetwindow>=0.0.9,<1.0.0
+
+# ========== 图形化控制台（gui_app.py） ==========
+customtkinter>=5.2.0,<6.0.0

@@ -21,6 +21,12 @@ ENV_LLM_BASE_URL = "VERSAIOS_LLM_BASE_URL"
 
 # 与 UxPlay/main.py 的 -n 参数保持一致
 DEFAULT_WINDOW_TITLE = "VersaiOS_Screen"
+APP_VERSION = "3.0.1"
+
+# HID 默认步数仅用于未校准场景，属于“不安全默认值”。
+# 请在 gui_app.py『阶段一：准备』完成校准后填入 config.ini 的 hid_max_x / hid_max_y。
+DEFAULT_HID_MAX_X = 140
+DEFAULT_HID_MAX_Y = 310
 
 
 def _load_ini_if_exists():
@@ -43,6 +49,16 @@ def _load_ini_if_exists():
 _ini = _load_ini_if_exists()
 
 
+def reload_config() -> None:
+    """重新读取 config.ini。
+
+    GUI 会在运行期间创建或保存配置文件；不刷新这里的缓存，随后启动
+    主控或更新校准提示时仍会使用导入时的旧配置。
+    """
+    global _ini
+    _ini = _load_ini_if_exists()
+
+
 def get_llm_provider() -> str:
     """
     LLM 提供方：
@@ -59,6 +75,20 @@ def get_llm_api_key():
     """
     key = os.environ.get(ENV_LLM_API_KEY) or _ini.get("llm_api_key", "").strip()
     return key if key else None
+
+
+def _is_placeholder_llm_api_key(key: str) -> bool:
+    """Detect values copied from config.example.ini rather than a real secret."""
+    normalized = key.strip().lower()
+    placeholder_tokens = (
+        "api_key",
+        "your_key",
+        "your-api-key",
+        "your api key",
+        "replace_me",
+        "changeme",
+    )
+    return any(token in normalized for token in placeholder_tokens)
 
 
 def get_llm_model() -> str:
@@ -111,19 +141,44 @@ def _int_or(s, default):
 def get_hid_max_x():
     """HID X 轴极限步数（校准后填入 config.ini）。"""
     raw = os.environ.get(ENV_HID_MAX_X) or _ini.get("hid_max_x", "").strip()
-    return _int_or(raw, 140)
+    return _int_or(raw, DEFAULT_HID_MAX_X)
 
 
 def get_hid_max_y():
     """HID Y 轴极限步数（校准后填入 config.ini）。"""
     raw = os.environ.get(ENV_HID_MAX_Y) or _ini.get("hid_max_y", "").strip()
-    return _int_or(raw, 310)
+    return _int_or(raw, DEFAULT_HID_MAX_Y)
+
+
+def is_hid_calibrated() -> bool:
+    """
+    判断 HID 步数是否已显式配置（环境变量或 config.ini）。
+    仅使用默认值视为未校准，GUI/CLI 应给出醒目提示。
+    """
+    x_raw = os.environ.get(ENV_HID_MAX_X) or _ini.get("hid_max_x", "").strip()
+    y_raw = os.environ.get(ENV_HID_MAX_Y) or _ini.get("hid_max_y", "").strip()
+    if not x_raw or not y_raw:
+        return False
+    try:
+        x_value = int(x_raw)
+        y_value = int(y_raw)
+    except (TypeError, ValueError):
+        return False
+    if x_value <= 0 or y_value <= 0:
+        return False
+
+    # config.example.ini 会写入占位默认值，因此“文件中存在该字段”不足以
+    # 说明用户已经完成校准。两个值都仍为默认值时保持警告。
+    return (x_value, y_value) != (DEFAULT_HID_MAX_X, DEFAULT_HID_MAX_Y)
 
 
 def validate_llm_config() -> Optional[str]:
     """启动前校验 LLM 配置，返回错误信息或 None。"""
-    if not get_llm_api_key():
+    api_key = get_llm_api_key()
+    if not api_key:
         return "未配置 llm_api_key / VERSAIOS_LLM_API_KEY"
+    if _is_placeholder_llm_api_key(api_key):
+        return "llm_api_key 仍是模板占位值，请填写真实 API Key"
     provider = get_llm_provider()
     if provider not in ("gemini", "openai_compatible"):
         return f"未知 llm_provider={provider!r}（支持 gemini / openai_compatible）"

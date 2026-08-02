@@ -5,6 +5,7 @@ import customtkinter as ctk
 
 from gui.calibration_module import CalibrationModule
 from gui.control_module import ControlModule
+from config import APP_VERSION
 
 
 # CTk 全局样式
@@ -14,7 +15,7 @@ ctk.set_default_color_theme("blue")
 
 def main():
     app = ctk.CTk()
-    app.title("VersaiOS 控制台 V2.5")
+    app.title(f"VersaiOS 控制台 V{APP_VERSION}")
     app.geometry("700x880")
 
     # 顶部引导说明
