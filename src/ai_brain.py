@@ -10,6 +10,7 @@ from typing import Any, Dict, Optional, Tuple
 from PIL import Image
 
 from config import (
+    OPENAI_STYLE_PROVIDERS,
     get_llm_api_key,
     get_llm_base_url,
     get_llm_model,
@@ -127,7 +128,8 @@ class VersaiOSAgent:
         """
         VersaiOS 的视觉大脑：
         - provider=gemini：使用 google-genai
-        - provider=openai_compatible：使用 OpenAI 兼容接口（OpenAI/DeepSeek/等）
+        - provider=anthropic：使用 Anthropic SDK
+        - 其他 OpenAI 风格提供方：使用 openai SDK
         """
         self.provider = (provider or get_llm_provider()).strip().lower()
         self.api_key = api_key or get_llm_api_key()
@@ -150,9 +152,26 @@ class VersaiOSAgent:
             self._gemini_client = genai.Client(api_key=self.api_key)
             self._gemini_types = types
             self._openai_client = None
-        elif self.provider == "openai_compatible":
+            self._anthropic_client = None
+        elif self.provider == "anthropic":
+            logger.info("正在初始化 Anthropic Claude 客户端。model=%s", self.model_name)
+            try:
+                from anthropic import Anthropic  # type: ignore
+            except ImportError as e:
+                raise RuntimeError(
+                    "未安装 anthropic 依赖。请执行：pip install -r requirements.txt"
+                ) from e
+
+            client_kwargs: Dict[str, Any] = {"api_key": self.api_key}
+            if self.base_url:
+                client_kwargs["base_url"] = self.base_url
+            self._anthropic_client = Anthropic(**client_kwargs)
+            self._gemini_client = None
+            self._openai_client = None
+        elif self.provider in OPENAI_STYLE_PROVIDERS:
             logger.info(
-                "正在初始化 OpenAI 兼容客户端。model=%s base_url=%s",
+                "正在初始化 %s 客户端（OpenAI 协议）。model=%s base_url=%s",
+                self.provider,
                 self.model_name,
                 self.base_url or "(default)",
             )
@@ -165,8 +184,9 @@ class VersaiOSAgent:
 
             self._openai_client = OpenAI(api_key=self.api_key, base_url=self.base_url)
             self._gemini_client = None
+            self._anthropic_client = None
         else:
-            raise ValueError(f"未知 llm_provider={self.provider!r}（支持 gemini / openai_compatible）")
+            raise ValueError(f"未知 llm_provider={self.provider!r}")
 
     def analyze_ui_and_plan(
         self, frame_img: Image.Image, user_instruction: str, max_retries: int = 2
@@ -236,7 +256,10 @@ class VersaiOSAgent:
         if self.provider == "gemini":
             return self._generate_with_gemini(prompt, jpeg_bytes)
 
-        if self.provider == "openai_compatible":
+        if self.provider == "anthropic":
+            return self._generate_with_anthropic(prompt, jpeg_bytes)
+
+        if self.provider in OPENAI_STYLE_PROVIDERS:
             return self._generate_with_openai(prompt, jpeg_bytes)
 
         raise ValueError(f"未知 provider={self.provider!r}")
@@ -366,3 +389,43 @@ class VersaiOSAgent:
         if last_err is not None:
             raise last_err
         return None
+
+    def _generate_with_anthropic(self, prompt: str, jpeg_bytes: bytes) -> Optional[str]:
+        """使用 Claude Messages API 发送文字与 JPEG 截图。"""
+        image_b64 = base64.b64encode(jpeg_bytes).decode("ascii")
+        try:
+            response = self._anthropic_client.messages.create(
+                model=self.model_name,
+                max_tokens=1024,
+                temperature=0.1,
+                system="你必须严格只输出 JSON 对象，不要输出任何多余文字。",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": "image/jpeg",
+                                    "data": image_b64,
+                                },
+                            },
+                        ],
+                    }
+                ],
+            )
+        except Exception as e:
+            logger.error("Anthropic Messages API 调用失败：%s", e)
+            raise
+
+        text_parts = [
+            block.text
+            for block in getattr(response, "content", [])
+            if getattr(block, "type", None) == "text" and getattr(block, "text", None)
+        ]
+        text = "\n".join(text_parts) or None
+        if not text:
+            logger.warning("Anthropic 返回空 text，response=%r", response)
+        return text

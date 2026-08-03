@@ -4,6 +4,11 @@
 
 ## V3.0.1（2026-08-02）
 
+- **模型选择器扩展**
+  - 模型厂商按 OpenAI、兼容 OpenAI 接口（本地模型/中转代理）、DeepSeek、Google Gemini、Anthropic Claude、智谱 AI、阿里通义千问、MiniMax 的顺序展示。
+  - 新增官方默认模型与端点；切换厂商时 GUI 自动填充推荐值，同时保留用户手动填写的模型名和代理端点。
+  - DeepSeek、智谱、通义、MiniMax 复用 OpenAI 兼容调用；Claude 新增 Anthropic Messages API 路径与 `anthropic` 依赖。
+
 - **依赖清单修正**
   - `requirements.txt`：新增 `numpy`、`customtkinter`。
   - 所有依赖按运行场景分组并固定 major 版本：核心 / CLI、视觉处理、图形界面。

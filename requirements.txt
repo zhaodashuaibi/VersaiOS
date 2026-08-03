@@ -8,6 +8,7 @@ pyserial>=3.5,<4.0
 # 视觉大模型 SDK（二选一即可，同时安装以支持切换）
 google-genai>=1.0.0,<2.0.0
 openai>=1.0.0,<2.0.0
+anthropic>=0.40.0,<1.0.0
 
 # ========== 视觉处理（src/vision_engine.py） ==========
 numpy>=1.24.0,<2.0.0
