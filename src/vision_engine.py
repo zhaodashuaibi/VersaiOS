@@ -1,6 +1,8 @@
 import time
 import cv2
 import numpy as np
+from typing import Any
+from mss.exception import ScreenShotError
 import mss
 import pygetwindow as gw
 from PIL import Image
@@ -9,9 +11,8 @@ from config import DEFAULT_WINDOW_TITLE, get_window_title
 
 
 logger = logging.getLogger(__name__)
-
 # 视觉捕获相关的具体异常类型，避免 bare except 吞掉无关错误
-_MSS_ERRORS = (mss.exception.MSSException,)
+_MSS_ERRORS: tuple[Any,...] = (ScreenShotError,)
 _WINDOW_ERRORS = (AttributeError, OSError, ValueError)
 
 
@@ -22,7 +23,7 @@ class VersaiOSVision:
         注意：投屏窗口名请在这里修改。
         """
         self.window_title = window_title or DEFAULT_WINDOW_TITLE
-        self.sct = mss.mss()  # 初始化极速截图器
+        self.sct = mss.MSS()  # 初始化极速截图器
 
     def _get_window_rect(self):
         """内部方法：获取目标窗口的实时坐标和尺寸"""
@@ -47,6 +48,11 @@ class VersaiOSVision:
             }
         except _WINDOW_ERRORS as e:
             logger.warning("获取窗口坐标失败。window_title=%r error=%s", self.window_title, e)
+            return None
+        except Exception as e:
+            # pygetwindow 在部分平台/窗口状态下可能抛出未归类的异常，
+            # 这里兜底记录并返回 None，避免主控端因窗口枚举偶发错误而崩溃。
+            logger.warning("获取窗口坐标遇到未预期异常。window_title=%r error=%s", self.window_title, e)
             return None
 
     def grab_frame_for_ai(self):

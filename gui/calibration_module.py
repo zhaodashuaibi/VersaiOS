@@ -10,6 +10,9 @@ import serial
 import customtkinter as ctk
 
 from .utils import load_existing_config, save_config_values
+
+# 串口操作的具体异常类型，避免 GUI 线程 bare except 吞掉无关错误
+_SERIAL_ERRORS = (serial.SerialException, PermissionError, OSError)
 from config import (
     DEFAULT_HID_MAX_X,
     DEFAULT_HID_MAX_Y,
@@ -232,7 +235,7 @@ class CalibrationModule(ctk.CTkFrame):
                     self._serial = ser
                 self.after(0, self._refresh_connection_state)
                 self.after(0, lambda: self._set_status(f"已连接 {com_port}", "green"))
-            except Exception as e:
+            except _SERIAL_ERRORS as e:
                 self.after(0, lambda: self._set_status(f"连接失败: {e}", "red"))
 
         threading.Thread(target=_open, daemon=True).start()
@@ -244,7 +247,7 @@ class CalibrationModule(ctk.CTkFrame):
         if ser and ser.is_open:
             try:
                 ser.close()
-            except Exception as e:
+            except _SERIAL_ERRORS as e:
                 self._set_status(f"断开连接异常: {e}", "red")
                 return
         self._refresh_connection_state()
@@ -272,7 +275,7 @@ class CalibrationModule(ctk.CTkFrame):
                     # 发送点击屏幕中心附近的测试指令
                     self._serial.write("CLICK:50,50\n".encode("utf-8"))
                 self.after(0, lambda: self._set_status("测试点击已发送，请观察 iPhone 是否响应", "green"))
-            except Exception as e:
+            except _SERIAL_ERRORS as e:
                 self.after(0, lambda: self._set_status(f"测试点击失败: {e}", "red"))
 
         threading.Thread(target=_send, daemon=True).start()
@@ -307,7 +310,7 @@ class CalibrationModule(ctk.CTkFrame):
                 self._acc_y += dy
                 self.after(0, self._update_acc_label)
                 self.after(0, lambda: self._set_status(f"已发送 REL:{dx},{dy}", "green"))
-            except Exception as e:
+            except _SERIAL_ERRORS as e:
                 self.after(0, lambda: self._set_status(f"发送失败: {e}", "red"))
 
         threading.Thread(target=_send, daemon=True).start()
@@ -338,7 +341,7 @@ class CalibrationModule(ctk.CTkFrame):
             reload_config()
             self._refresh_calibration_warning()
             self._set_status("配置已保存", "green")
-        except Exception as e:
+        except (OSError, ValueError) as e:
             self._set_status(f"保存失败: {e}", "red")
 
     def _refresh_calibration_warning(self):

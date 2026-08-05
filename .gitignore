@@ -2,10 +2,6 @@
 __pycache__/
 *.py[cod]
 
-# IDE / 编辑器配置（与项目逻辑无关）
-.idea/
-.vscode/
-
 # 系统隐藏文件
 .DS_Store
 Thumbs.db
@@ -20,4 +16,3 @@ assets/debug_target_result.png
 
 # UxPlay 运行时缓存（会自动生成/变化）
 UxPlay/gst_registry.bin
-Uxplay/gst_registry.bin

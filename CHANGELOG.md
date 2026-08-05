@@ -2,6 +2,25 @@
 
 本项目采用“尽量可读”的更新记录方式：按日期归档，描述对使用者有影响的变化。
 
+## V3.0.2（2026-08-05）
+
+- **requirements.txt 与 Python 3.13 兼容性修复**
+  - `numpy`：`<2.0.0` → `<3.0.0`（numpy 1.x 无 Python 3.13 wheel）。
+  - `Pillow`：`<11.0.0` → `<12.0.0`。
+  - `mss`：`<10.0.0` → `<11.0.0`。
+  - `opencv-python`：`>=4.8.0` → `>=4.10.0`（确保提供 Python 3.13 预编译包）。
+
+- **SDK 专属异常重试修复（`src/ai_brain.py`）**
+  - 在 `VersaiOSAgent.__init__` 中按 provider 收集可重试异常：Gemini `ServerError`、OpenAI `APIConnectionError/RateLimitError/InternalServerError`、Anthropic 对应异常，并叠加 Python `ConnectionError/TimeoutError`。
+  - `analyze_ui_and_plan` 统一捕获 `self._retryable_errors`，避免 SDK 专属网络/限流异常被裸 `except Exception` 吞掉。
+
+- **视觉捕获稳定性增强（`src/vision_engine.py`）**
+  - `_get_window_rect` 在保留具体异常捕获的基础上，新增 `Exception` 兜底分支，窗口枚举偶发错误时返回 `None` 而非崩溃。
+
+- **GUI 异常捕获收窄**
+  - `gui/calibration_module.py`：串口操作统一捕获 `_SERIAL_ERRORS = (serial.SerialException, PermissionError, OSError)`。
+  - `gui/control_module.py`：子进程操作统一捕获 `_PROCESS_ERRORS = (subprocess.SubprocessError, OSError)`；stdin 写入捕获 `(OSError, ValueError)`。
+
 ## V3.0.1（2026-08-02）
 
 - **模型选择器扩展**

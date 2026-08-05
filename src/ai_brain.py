@@ -25,6 +25,9 @@ logger = logging.getLogger(__name__)
 _MAX_IMAGE_LONG_SIDE = 1280
 _JPEG_QUALITY = 85
 
+# 可重试的网络/服务端异常基线
+_RETRYABLE_BASE = (ConnectionError, TimeoutError)
+
 
 def _strip_json_fence(raw_text: str) -> str:
     """去掉 LLM 可能包裹的 ```json ... ``` 围栏。"""
@@ -144,6 +147,7 @@ class VersaiOSAgent:
             try:
                 from google import genai  # lazy import
                 from google.genai import types  # noqa: F401
+                from google.genai import errors as gemini_errors
             except ImportError as e:
                 raise RuntimeError(
                     "未安装 google-genai 依赖。请执行：pip install -r requirements.txt"
@@ -153,10 +157,13 @@ class VersaiOSAgent:
             self._gemini_types = types
             self._openai_client = None
             self._anthropic_client = None
+            # Gemini 的 ServerError 以及底层网络异常值得重试
+            self._retryable_errors = _RETRYABLE_BASE + (gemini_errors.ServerError,)
         elif self.provider == "anthropic":
             logger.info("正在初始化 Anthropic Claude 客户端。model=%s", self.model_name)
             try:
                 from anthropic import Anthropic  # type: ignore
+                import anthropic
             except ImportError as e:
                 raise RuntimeError(
                     "未安装 anthropic 依赖。请执行：pip install -r requirements.txt"
@@ -168,6 +175,11 @@ class VersaiOSAgent:
             self._anthropic_client = Anthropic(**client_kwargs)
             self._gemini_client = None
             self._openai_client = None
+            self._retryable_errors = _RETRYABLE_BASE + (
+                anthropic.APIConnectionError,
+                anthropic.RateLimitError,
+                anthropic.InternalServerError,
+            )
         elif self.provider in OPENAI_STYLE_PROVIDERS:
             logger.info(
                 "正在初始化 %s 客户端（OpenAI 协议）。model=%s base_url=%s",
@@ -177,6 +189,7 @@ class VersaiOSAgent:
             )
             try:
                 from openai import OpenAI  # type: ignore
+                import openai
             except ImportError as e:
                 raise RuntimeError(
                     "未安装 openai 依赖。请执行：pip install -r requirements.txt"
@@ -185,6 +198,11 @@ class VersaiOSAgent:
             self._openai_client = OpenAI(api_key=self.api_key, base_url=self.base_url)
             self._gemini_client = None
             self._anthropic_client = None
+            self._retryable_errors = _RETRYABLE_BASE + (
+                openai.APIConnectionError,
+                openai.RateLimitError,
+                openai.InternalServerError,
+            )
         else:
             raise ValueError(f"未知 llm_provider={self.provider!r}")
 
@@ -228,9 +246,9 @@ class VersaiOSAgent:
                     logger.debug("LLM reason=%r", plan.get("reason"))
                 return plan
 
-            except (ConnectionError, TimeoutError) as e:
+            except self._retryable_errors as e:
                 logger.warning(
-                    "LLM 推理网络异常（attempt=%s/%s provider=%s）：%s",
+                    "LLM 推理遇到可重试异常（attempt=%s/%s provider=%s）：%s",
                     attempt,
                     max_retries + 1,
                     self.provider,
@@ -240,6 +258,7 @@ class VersaiOSAgent:
                 # 初始化或 SDK 调用参数错误，重试无意义，直接抛出
                 raise
             except Exception:
+                # 其余未预期异常记录后仍尝试重试，避免单次偶发错误导致任务失败
                 logger.exception(
                     "LLM 推理调用异常（attempt=%s/%s provider=%s）。",
                     attempt,

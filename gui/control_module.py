@@ -15,6 +15,9 @@ import customtkinter as ctk
 from PIL import Image, ImageDraw
 
 from .utils import UXPLAY_MAIN_PATH, MAIN_VERSAIOS_PATH, SRC_PATH
+
+# 子进程/外部资源操作的具体异常类型
+_PROCESS_ERRORS = (subprocess.SubprocessError, OSError)
 from config import (
     get_window_title,
     get_llm_provider,
@@ -141,7 +144,7 @@ class ControlModule(ctk.CTkFrame):
             )
             self.ux_status_label.configure(text="接收端运行中", text_color="green")
             self._log("投屏接收端已启动", "green")
-        except Exception as e:
+        except _PROCESS_ERRORS as e:
             self.ux_status_label.configure(text="启动失败", text_color="red")
             self._log(f"启动接收端失败: {e}", "red")
 
@@ -153,7 +156,7 @@ class ControlModule(ctk.CTkFrame):
         try:
             self.uxplay_process.terminate()
             self.uxplay_process.wait(timeout=3)
-        except Exception as e:
+        except _PROCESS_ERRORS as e:
             self._log(f"停止接收端时发生异常: {e}", "red")
         finally:
             self.uxplay_process = None
@@ -176,6 +179,8 @@ class ControlModule(ctk.CTkFrame):
                 stdin=subprocess.PIPE,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
+                encoding="utf-8",
+                errors="replace",
                 text=True,
                 cwd=SRC_PATH
             )
@@ -188,7 +193,7 @@ class ControlModule(ctk.CTkFrame):
             self.ctrl_status_label.configure(text="主控端运行中", text_color="green")
             self.start_controller_btn.configure(state="disabled")
             self._log("主控端已启动，可以发送指令", "green")
-        except Exception as e:
+        except _PROCESS_ERRORS as e:
             self.ctrl_status_label.configure(text="启动失败", text_color="red")
             self._log(f"启动主控端失败: {e}", "red")
 
@@ -203,7 +208,7 @@ class ControlModule(ctk.CTkFrame):
         try:
             self.controller_process.terminate()
             self.controller_process.wait(timeout=3)
-        except Exception as e:
+        except _PROCESS_ERRORS as e:
             self._log(f"停止主控端时发生异常: {e}", "red")
         finally:
             self.controller_process = None
@@ -230,7 +235,7 @@ class ControlModule(ctk.CTkFrame):
         if self.controller_process is not None and self.controller_process.poll() is None:
             try:
                 self.controller_process.terminate()
-            except Exception:
+            except (subprocess.SubprocessError, OSError):
                 pass
         self.controller_process = None
 
@@ -327,7 +332,7 @@ class ControlModule(ctk.CTkFrame):
             self.controller_process.stdin.flush()
             self._log(f"发送指令: {instruction}", "blue")
             self.instruction_entry.delete(0, "end")
-        except Exception as e:
+        except (OSError, ValueError) as e:
             self._log(f"发送指令失败: {e}", "red")
 
     # ========================== 日志工具 ==========================
