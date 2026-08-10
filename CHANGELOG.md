@@ -2,6 +2,17 @@
 
 本项目采用“尽量可读”的更新记录方式：按日期归档，描述对使用者有影响的变化。
 
+## V3.1.0（2026-08-10）
+
+- **模型接口收敛为 OpenAI 兼容接口**
+  - 删除 GUI 中的模型厂商下拉选择，固定使用 OpenAI 兼容接口，默认 `llm_provider = openai_compatible`。
+  - `src/config.py` 移除各厂商默认端点/模型与多厂商选择逻辑；`src/ai_brain.py` 只保留 openai SDK 调用路径。
+  - `requirements.txt` 移除 `google-genai`、`anthropic`，仅保留 `openai`。
+
+- **GUI 配置写入修复**
+  - 「阶段一：准备」新增「确认并写入 config」按钮：填写 API Key / Base URL / 模型名后点击，立即写入 `src/config.ini` 并刷新配置缓存。
+  - Base URL 标签明确为必填并给出示例端点；`config.ini` / `config.example.ini` 同步更新为 `openai_compatible`。
+
 ## V3.0.2（2026-08-05）
 
 - **requirements.txt 与 Python 3.13 兼容性修复**

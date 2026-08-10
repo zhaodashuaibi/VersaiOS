@@ -30,10 +30,10 @@ if SRC_PATH not in sys.path:
 
 # 默认配置项，与 src/config.example.ini 保持一致
 DEFAULT_CONFIG: Dict[str, str] = {
-    "llm_provider": "gemini",
+    "llm_provider": "openai_compatible",
     "llm_api_key": "",
     "llm_base_url": "",
-    "llm_model": "gemini-3-flash-preview",
+    "llm_model": "gpt-4.1-mini",
     "com_port": "COM3",
     "window_title": "VersaiOS_Screen",
     "hid_max_x": "140",

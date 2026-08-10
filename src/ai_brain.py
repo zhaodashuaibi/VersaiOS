@@ -2,15 +2,12 @@ import base64
 import io
 import json
 import logging
-import os
 import re
-import tempfile
 from typing import Any, Dict, Optional, Tuple
 
 from PIL import Image
 
 from config import (
-    OPENAI_STYLE_PROVIDERS,
     get_llm_api_key,
     get_llm_base_url,
     get_llm_model,
@@ -130,9 +127,7 @@ class VersaiOSAgent:
     ):
         """
         VersaiOS 的视觉大脑：
-        - provider=gemini：使用 google-genai
-        - provider=anthropic：使用 Anthropic SDK
-        - 其他 OpenAI 风格提供方：使用 openai SDK
+        固定使用 OpenAI 兼容接口（openai SDK），端点在 GUI/ini 中通过 llm_base_url 配置。
         """
         self.provider = (provider or get_llm_provider()).strip().lower()
         self.api_key = api_key or get_llm_api_key()
@@ -142,69 +137,28 @@ class VersaiOSAgent:
         if not self.api_key:
             raise ValueError("LLM API Key 未配置（llm_api_key / VERSAIOS_LLM_API_KEY）。")
 
-        if self.provider == "gemini":
-            logger.info("正在初始化 Gemini 客户端与模型。model=%s", self.model_name)
-            try:
-                from google import genai  # lazy import
-                from google.genai import types  # noqa: F401
-                from google.genai import errors as gemini_errors
-            except ImportError as e:
-                raise RuntimeError(
-                    "未安装 google-genai 依赖。请执行：pip install -r requirements.txt"
-                ) from e
+        logger.info(
+            "正在初始化 OpenAI 兼容客户端。model=%s base_url=%s",
+            self.model_name,
+            self.base_url or "(未设置)",
+        )
+        try:
+            from openai import OpenAI  # type: ignore
+            import openai
+        except ImportError as e:
+            raise RuntimeError(
+                "未安装 openai 依赖。请执行：pip install -r requirements.txt"
+            ) from e
 
-            self._gemini_client = genai.Client(api_key=self.api_key)
-            self._gemini_types = types
-            self._openai_client = None
-            self._anthropic_client = None
-            # Gemini 的 ServerError 以及底层网络异常值得重试
-            self._retryable_errors = _RETRYABLE_BASE + (gemini_errors.ServerError,)
-        elif self.provider == "anthropic":
-            logger.info("正在初始化 Anthropic Claude 客户端。model=%s", self.model_name)
-            try:
-                from anthropic import Anthropic  # type: ignore
-                import anthropic
-            except ImportError as e:
-                raise RuntimeError(
-                    "未安装 anthropic 依赖。请执行：pip install -r requirements.txt"
-                ) from e
+        if not self.base_url:
+            raise ValueError("OpenAI 兼容接口未配置 llm_base_url（请先在 GUI 填写并点击确认）。")
 
-            client_kwargs: Dict[str, Any] = {"api_key": self.api_key}
-            if self.base_url:
-                client_kwargs["base_url"] = self.base_url
-            self._anthropic_client = Anthropic(**client_kwargs)
-            self._gemini_client = None
-            self._openai_client = None
-            self._retryable_errors = _RETRYABLE_BASE + (
-                anthropic.APIConnectionError,
-                anthropic.RateLimitError,
-                anthropic.InternalServerError,
-            )
-        elif self.provider in OPENAI_STYLE_PROVIDERS:
-            logger.info(
-                "正在初始化 %s 客户端（OpenAI 协议）。model=%s base_url=%s",
-                self.provider,
-                self.model_name,
-                self.base_url or "(default)",
-            )
-            try:
-                from openai import OpenAI  # type: ignore
-                import openai
-            except ImportError as e:
-                raise RuntimeError(
-                    "未安装 openai 依赖。请执行：pip install -r requirements.txt"
-                ) from e
-
-            self._openai_client = OpenAI(api_key=self.api_key, base_url=self.base_url)
-            self._gemini_client = None
-            self._anthropic_client = None
-            self._retryable_errors = _RETRYABLE_BASE + (
-                openai.APIConnectionError,
-                openai.RateLimitError,
-                openai.InternalServerError,
-            )
-        else:
-            raise ValueError(f"未知 llm_provider={self.provider!r}")
+        self._openai_client = OpenAI(api_key=self.api_key, base_url=self.base_url)
+        self._retryable_errors = _RETRYABLE_BASE + (
+            openai.APIConnectionError,
+            openai.RateLimitError,
+            openai.InternalServerError,
+        )
 
     def analyze_ui_and_plan(
         self, frame_img: Image.Image, user_instruction: str, max_retries: int = 2
@@ -271,86 +225,7 @@ class VersaiOSAgent:
 
     def _generate_json_text(self, prompt: str, frame_img: Image.Image) -> Optional[str]:
         jpeg_bytes = _compress_image_to_jpeg(frame_img)
-
-        if self.provider == "gemini":
-            return self._generate_with_gemini(prompt, jpeg_bytes)
-
-        if self.provider == "anthropic":
-            return self._generate_with_anthropic(prompt, jpeg_bytes)
-
-        if self.provider in OPENAI_STYLE_PROVIDERS:
-            return self._generate_with_openai(prompt, jpeg_bytes)
-
-        raise ValueError(f"未知 provider={self.provider!r}")
-
-    def _generate_with_gemini(self, prompt: str, jpeg_bytes: bytes) -> Optional[str]:
-        from google.genai import types
-
-        # 优先上传到 Gemini File API，只传 URI，避免每次内嵌大 base64。
-        uploaded_file = None
-        tmp_path: Optional[str] = None
-        try:
-            with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
-                tmp.write(jpeg_bytes)
-                tmp_path = tmp.name
-            uploaded_file = self._gemini_client.files.upload(file=tmp_path)
-            if not getattr(uploaded_file, "uri", None):
-                logger.warning("Gemini 文件上传未返回 URI，将回退到内联 bytes。")
-                uploaded_file = None
-            else:
-                logger.debug("Gemini 文件已上传：uri=%s", uploaded_file.uri)
-        except Exception:
-            logger.warning("Gemini 文件上传失败，将回退到内联 bytes。", exc_info=True)
-        finally:
-            # 删除临时文件，file 资源在服务端保留一段时间即可
-            if tmp_path:
-                try:
-                    os.remove(tmp_path)
-                except OSError as e:
-                    logger.warning("无法删除 Gemini 临时图片：%s", e)
-
-        contents: Any
-        if uploaded_file is not None:
-            contents = [
-                types.Content(
-                    role="user",
-                    parts=[
-                        types.Part.from_text(text=prompt),
-                        types.Part.from_uri(
-                            file_uri=uploaded_file.uri,
-                            mime_type=uploaded_file.mime_type or "image/jpeg",
-                        ),
-                    ],
-                )
-            ]
-        else:
-            contents = [
-                types.Content(
-                    role="user",
-                    parts=[
-                        types.Part.from_text(text=prompt),
-                        types.Part.from_bytes(data=jpeg_bytes, mime_type="image/jpeg"),
-                    ],
-                )
-            ]
-
-        try:
-            response = self._gemini_client.models.generate_content(
-                model=self.model_name,
-                contents=contents,
-                config=types.GenerateContentConfig(
-                    temperature=0.1,
-                    response_mime_type="application/json",
-                ),
-            )
-        except Exception as e:
-            logger.error("Gemini generate_content 调用失败：%s", e)
-            raise
-
-        text = getattr(response, "text", None)
-        if not text:
-            logger.warning("Gemini 返回空 text，response=%r", response)
-        return text
+        return self._generate_with_openai(prompt, jpeg_bytes)
 
     def _generate_with_openai(self, prompt: str, jpeg_bytes: bytes) -> Optional[str]:
         import openai
@@ -408,43 +283,3 @@ class VersaiOSAgent:
         if last_err is not None:
             raise last_err
         return None
-
-    def _generate_with_anthropic(self, prompt: str, jpeg_bytes: bytes) -> Optional[str]:
-        """使用 Claude Messages API 发送文字与 JPEG 截图。"""
-        image_b64 = base64.b64encode(jpeg_bytes).decode("ascii")
-        try:
-            response = self._anthropic_client.messages.create(
-                model=self.model_name,
-                max_tokens=1024,
-                temperature=0.1,
-                system="你必须严格只输出 JSON 对象，不要输出任何多余文字。",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {"type": "text", "text": prompt},
-                            {
-                                "type": "image",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": "image/jpeg",
-                                    "data": image_b64,
-                                },
-                            },
-                        ],
-                    }
-                ],
-            )
-        except Exception as e:
-            logger.error("Anthropic Messages API 调用失败：%s", e)
-            raise
-
-        text_parts = [
-            block.text
-            for block in getattr(response, "content", [])
-            if getattr(block, "type", None) == "text" and getattr(block, "text", None)
-        ]
-        text = "\n".join(text_parts) or None
-        if not text:
-            logger.warning("Anthropic 返回空 text，response=%r", response)
-        return text

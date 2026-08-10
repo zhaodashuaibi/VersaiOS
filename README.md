@@ -2,7 +2,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Hardware: ESP32-S3](https://img.shields.io/badge/Hardware-ESP32--S3-blue.svg)]()
-[![AI: VLM](https://img.shields.io/badge/AI_Brain-Multi_Provider-orange.svg)]()
+[![AI: VLM](https://img.shields.io/badge/AI_Brain-OpenAI_Compatible-orange.svg)]()
 
 **VersaiOS** 是一个基于“视觉大模型 (VLM) + 硬件级 HID 注入”的次世代 iOS 跨端物理控制系统。
 
@@ -12,7 +12,7 @@
 
 ## ✨ 核心亮点 (Core Features)
 
-🧠 视觉大脑 (Vision-Language AI)：** 支持 OpenAI、兼容 OpenAI 接口（本地模型/中转代理）、DeepSeek、Google Gemini、Anthropic Claude、智谱 AI、阿里通义千问、MiniMax。直接输入自然语言（如：“点击微信”或“点右上角的红色关闭按钮”），AI 即可自动理解屏幕语义并返回目标相对坐标。
+🧠 视觉大脑 (Vision-Language AI)：** 使用 OpenAI 兼容接口（OpenAI/DeepSeek/本地模型/中转代理均可，具体端点由 Base URL 指定）。直接输入自然语言（如：“点击微信”或“点右上角的红色关闭按钮”），AI 即可自动理解屏幕语义并返回目标相对坐标。
 
 🛡️ 降维物理打击 (Hardware HID Attack)：** 电脑端 Python 大脑下发绝对坐标指令，ESP32 伪装成苹果官方蓝牙鼠标执行物理点击。从底层彻底绕过 iOS 软件层面的自动化防护。
 
@@ -81,7 +81,7 @@ pip install -r requirements.txt
 
 `requirements.txt` 已按运行场景分组并固定 major 版本，请勿随意升级：
 
-- **核心 / CLI**：`pyserial`、`google-genai`、`openai`、`anthropic`
+- **核心 / CLI**：`pyserial`、`openai`
 - **视觉处理**：`numpy`、`opencv-python`、`Pillow`、`mss`、`pygetwindow`
 - **图形界面**：`customtkinter`
 
@@ -193,21 +193,18 @@ python main_versaios.py
   - 主控端要求模型返回**严格 JSON**，字段包含 `x_ratio/y_ratio`（0~1），可选 `reason`
   - 如果你接入的 `openai_compatible` 端点不支持 `response_format`，代码会自动降级，但仍依赖提示词约束输出 JSON
 
-- **模型提供方**
-  - GUI 选择器固定按以下顺序展示：OpenAI、兼容 OpenAI 接口（本地模型/中转代理）、DeepSeek、Google Gemini、Anthropic Claude、智谱 AI、阿里通义千问、MiniMax。
-  - OpenAI、DeepSeek、智谱、通义和 MiniMax 通过 OpenAI 兼容协议调用；Claude 使用 Anthropic Messages API；Gemini 使用 `google-genai`。
-  - 本项目必须传入截图，请在所选厂商中填写支持视觉输入的模型名。默认端点和示例模型可在 `src/config.py` 中查看；地区端点、账户专用端点和代理地址可在 GUI 的 Base URL 覆盖。
+- **模型接口**
+  - 固定使用 OpenAI 兼容接口，无需选择厂商；OpenAI、DeepSeek、本地模型、中转代理等统一通过 `llm_base_url` 指定端点。
+  - 在 GUI「阶段一：准备」填写 API Key 与 Base URL 后点击「确认并写入 config」，配置会立即保存到 `src/config.ini`。
+  - 本项目必须传入截图，请填写支持视觉输入的模型名（默认 `gpt-4.1-mini`）；端点不支持 `response_format` 时自动降级。
 
 - **SDK 版本约束**
-  - `google-genai`  major 版本锁定在 `1.x`：`client.files.upload` + `types.Part.from_uri/from_bytes` 等调用依赖该版本。
   - `openai` major 版本锁定在 `1.x`：`chat.completions.create` + `image_url` 数据格式依赖该版本。
-  - `anthropic` 用于 Claude 的 Messages API；切换到 Claude 前请重新执行 `pip install -r requirements.txt`。
   - 升级 major 版本前请务必先用最小样例验证图像输入与 JSON 输出是否正常。
 
 - **图像上送策略**
   - 所有截图在发往 LLM 前会先缩放（长边 ≤ 1280px）并压缩为 JPEG（质量 85），避免 base64 请求体过大。
-  - Gemini 路径优先调用 `client.files.upload` 上传图片，只传递文件 URI；上传失败时自动回退到内联 bytes。
-  - OpenAI 兼容路径使用 `image_url` + JPEG base64 data URL；若你的端点支持公开图床 URL，可扩展 `ai_brain.py` 直接传 URL。
+  - 使用 `image_url` + JPEG base64 data URL 上送截图；若你的端点支持公开图床 URL，可扩展 `ai_brain.py` 直接传 URL。
 
 - **调试：验证坐标是否点准**
   - 在 `gui_app.py` 的“阶段二：运行”中点击“测试视觉（截图 + 标红目标）”，系统会截取当前画面、调用 VLM 预测目标位置并绘制红圈，结果保存为 `assets/debug_target_result.png` 同时弹窗预览。

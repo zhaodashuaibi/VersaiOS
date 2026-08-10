@@ -21,49 +21,22 @@ ENV_LLM_BASE_URL = "VERSAIOS_LLM_BASE_URL"
 
 # 与 UxPlay/main.py 的 -n 参数保持一致
 DEFAULT_WINDOW_TITLE = "VersaiOS_Screen"
-APP_VERSION = "3.0.1"
+APP_VERSION = "3.1.0"
 
-# 模型提供方在 GUI 中的固定展示顺序。配置文件保存稳定的 provider ID，而不是
-# 展示文案，以避免后续调整中文名称时破坏已有配置。
+# 模型接口固定为 OpenAI 兼容接口，不再提供厂商选择。
+# 保留 llm_provider 字段仅为兼容旧配置，实际读取时统一按 openai_compatible 处理。
 LLM_PROVIDER_OPTIONS = (
-    ("openai", "OpenAI"),
-    ("openai_compatible", "兼容 OpenAI 接口（本地模型、中转代理）"),
-    ("deepseek", "DeepSeek"),
-    ("gemini", "Google Gemini"),
-    ("anthropic", "Anthropic Claude"),
-    ("zhipu", "智谱 AI"),
-    ("qwen", "阿里通义千问"),
-    ("minimax", "MiniMax"),
+    ("openai_compatible", "兼容 OpenAI 接口（OpenAI/DeepSeek/本地模型/中转代理）"),
 )
 LLM_PROVIDER_LABELS = dict(LLM_PROVIDER_OPTIONS)
 LLM_PROVIDER_IDS_BY_LABEL = {label: provider for provider, label in LLM_PROVIDER_OPTIONS}
-OPENAI_STYLE_PROVIDERS = frozenset({
-    "openai",
-    "openai_compatible",
-    "deepseek",
-    "zhipu",
-    "qwen",
-    "minimax",
-})
+OPENAI_STYLE_PROVIDERS = frozenset({"openai_compatible"})
 
-# 这些值是可直接使用的官方端点；用户仍可在 GUI/ini 中改成区域端点或代理地址。
-# openai_compatible 不设置默认端点，因为它专用于本地模型和中转代理。
-DEFAULT_LLM_BASE_URLS = {
-    "openai": "https://api.openai.com/v1",
-    "deepseek": "https://api.deepseek.com",
-    "zhipu": "https://open.bigmodel.cn/api/paas/v4",
-    "qwen": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    "minimax": "https://api.minimax.io/v1",
-}
+# OpenAI 兼容接口不内置默认端点，必须由用户在 GUI/ini 中填写 llm_base_url。
+DEFAULT_LLM_BASE_URLS: dict = {}
+
 DEFAULT_LLM_MODELS = {
-    "openai": "gpt-4.1-mini",
     "openai_compatible": "gpt-4.1-mini",
-    "deepseek": "deepseek-v4-flash",
-    "gemini": "gemini-3-flash-preview",
-    "anthropic": "claude-sonnet-4-20250514",
-    "zhipu": "glm-4.6v-flash",
-    "qwen": "qwen-vl-plus",
-    "minimax": "MiniMax-VL-01",
 }
 
 # HID 默认步数仅用于未校准场景，属于“不安全默认值”。
@@ -103,36 +76,29 @@ def reload_config() -> None:
 
 
 def get_llm_provider() -> str:
-    """
-    LLM 提供方。支持 OpenAI、兼容 OpenAI 接口、DeepSeek、Google Gemini、
-    Anthropic Claude、智谱 AI、阿里通义千问和 MiniMax。
-    """
-    raw = (os.environ.get(ENV_LLM_PROVIDER) or _ini.get("llm_provider", "")).strip().lower()
-    return raw or "gemini"
+    """LLM 提供方。固定使用 OpenAI 兼容接口，不再支持厂商选择。"""
+    return "openai_compatible"
 
 
 def get_llm_provider_label(provider: Optional[str] = None) -> str:
     """返回 provider ID 对应的 GUI 展示文案。"""
     provider_id = (provider or get_llm_provider()).strip().lower()
-    return LLM_PROVIDER_LABELS.get(provider_id, provider_id)
+    return LLM_PROVIDER_LABELS.get(provider_id, LLM_PROVIDER_LABELS["openai_compatible"])
 
 
 def get_llm_provider_id(value: str) -> str:
-    """兼容 GUI 展示文案和配置中的 provider ID，统一返回 provider ID。"""
-    normalized = value.strip()
-    return LLM_PROVIDER_IDS_BY_LABEL.get(normalized, normalized.lower())
+    """兼容旧配置与展示文案，统一返回固定的 openai_compatible。"""
+    return "openai_compatible"
 
 
 def get_default_llm_model(provider: Optional[str] = None) -> str:
-    """返回提供方的默认视觉模型名称。"""
-    provider_id = (provider or get_llm_provider()).strip().lower()
-    return DEFAULT_LLM_MODELS.get(provider_id, DEFAULT_LLM_MODELS["gemini"])
+    """返回默认视觉模型名称（OpenAI 兼容接口）。"""
+    return DEFAULT_LLM_MODELS["openai_compatible"]
 
 
 def get_default_llm_base_url(provider: Optional[str] = None) -> Optional[str]:
-    """返回提供方的官方默认端点；本地/代理兼容接口不设默认端点。"""
-    provider_id = (provider or get_llm_provider()).strip().lower()
-    return DEFAULT_LLM_BASE_URLS.get(provider_id)
+    """OpenAI 兼容接口不设默认端点，必须由用户填写。"""
+    return None
 
 
 def get_llm_api_key():
@@ -166,12 +132,9 @@ def get_llm_model() -> str:
 
 
 def get_llm_base_url():
-    """
-    用户显式配置的 base_url 优先；否则返回各厂商官方默认端点。
-    本地模型/中转代理的 openai_compatible 没有默认端点，必须由用户填写。
-    """
+    """返回用户配置的 base_url；OpenAI 兼容接口没有内置默认端点，必须填写。"""
     raw = (os.environ.get(ENV_LLM_BASE_URL) or _ini.get("llm_base_url", "")).strip()
-    return raw if raw else get_default_llm_base_url()
+    return raw or None
 
 
 def get_com_port():
@@ -240,12 +203,8 @@ def validate_llm_config() -> Optional[str]:
         return "未配置 llm_api_key / VERSAIOS_LLM_API_KEY"
     if _is_placeholder_llm_api_key(api_key):
         return "llm_api_key 仍是模板占位值，请填写真实 API Key"
-    provider = get_llm_provider()
-    if provider not in LLM_PROVIDER_LABELS:
-        supported = " / ".join(LLM_PROVIDER_LABELS)
-        return f"未知 llm_provider={provider!r}（支持 {supported}）"
-    if provider == "openai_compatible" and not get_llm_base_url():
-        return "openai_compatible 需要配置 llm_base_url / VERSAIOS_LLM_BASE_URL"
+    if not get_llm_base_url():
+        return "OpenAI 兼容接口需要配置 llm_base_url / VERSAIOS_LLM_BASE_URL"
     return None
 
 

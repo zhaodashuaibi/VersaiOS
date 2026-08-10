@@ -30,7 +30,10 @@ def main():
     config_err = validate_llm_config()
     if config_err:
         logger.error("LLM 配置无效：%s", config_err)
-        logger.error("请在 src/config.ini 或环境变量中配置 llm_provider / llm_api_key / llm_base_url。")
+        logger.error(
+            "请在 src/config.ini 的 [versaios] 中配置 llm_api_key / llm_base_url，"
+            "或在 GUI 阶段一填写后点击“确认并写入 config”。"
+        )
         return
 
     com_port = get_com_port()

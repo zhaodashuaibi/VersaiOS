@@ -5,10 +5,8 @@
 # ========== 核心 CLI / 主控端（src/main_versaios.py） ==========
 pyserial>=3.5,<4.0
 
-# 视觉大模型 SDK（二选一即可，同时安装以支持切换）
-google-genai>=1.0.0,<2.0.0
+# 视觉大模型 SDK：仅需 OpenAI 兼容接口
 openai>=1.0.0,<2.0.0
-anthropic>=0.40.0,<1.0.0
 
 # ========== 视觉处理（src/vision_engine.py） ==========
 # numpy 1.x 没有 Python 3.13  wheels，必须允许 2.x

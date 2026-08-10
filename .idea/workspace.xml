@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="ALL" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="845b5998-a91e-4064-9660-7f6e93ca5849" name="更改" comment="V3.0.2（2026-08-05）&#10;requirements.txt 与 Python 3.13 兼容性修复&#10;SDK 专属异常重试修复（src/ai_brain.py）&#10;&#10;在 VersaiOSAgent.__init__ 中按 provider 收集可重试异常：Gemini ServerError、OpenAI APIConnectionError/RateLimitError/InternalServerError、Anthropic 对应异常，并叠加 Python ConnectionError/TimeoutError。&#10;analyze_ui_and_plan 统一捕获 self._retryable_errors，避免 SDK 专属网络/限流异常被裸 except Exception 吞掉。&#10;视觉捕获稳定性增强（src/vision_engine.py）&#10;&#10;_get_window_rect 在保留具体异常捕获的基础上，新增 Exception 兜底分支，窗口枚举偶发错误时返回 None 而非崩溃。&#10;GUI 异常捕获收窄&#10;&#10;gui/calibration_module.py：串口操作统一捕获 _SERIAL_ERRORS = (serial.SerialException, PermissionError, OSError)。&#10;gui/control_module.py：子进程操作统一捕获 _PROCESS_ERRORS = (subprocess.SubprocessError, OSError)；stdin 写入捕获 (OSError, ValueError)。" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="master" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;zhaodashuaibi&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/zhaodashuaibi/VersaiOS.git&quot;,
+    &quot;accountId&quot;: &quot;35071bd5-1f9b-40de-b474-5bf97c1a1b28&quot;
+  }
+}</component>
+  <component name="NextEditCompletionFeaturesState">
+    <decayedCancelled>
+      <entry key="MS100" value="1.0000000000000007" />
+      <entry key="MS500" value="1.0009124998337626" />
+      <entry key="S2" value="1.1901111254001426" />
+      <entry key="S5" value="1.6893647189675762" />
+      <entry key="S10" value="2.14374183021644" />
+      <entry key="S30" value="2.649926483239553" />
+      <entry key="S60" value="2.8203786726850213" />
+      <entry key="M2" value="3.1302203763982135" />
+      <entry key="M5" value="5.146439458140633" />
+      <entry key="M10" value="7.652256617037966" />
+      <entry key="M15" value="9.006955506105836" />
+      <entry key="M30" value="10.751810148123816" />
+      <entry key="H1" value="11.804729170183657" />
+      <entry key="H2" value="12.383419282012769" />
+      <entry key="H4" value="12.686821232825759" />
+      <entry key="D1" value="12.947111286109308" />
+      <entry key="W1" value="12.992427340041699" />
+    </decayedCancelled>
+    <decayedSelected>
+      <entry key="MS100" value="9.537605638235891E-33" />
+      <entry key="MS500" value="3.943554727760628E-7" />
+      <entry key="S2" value="0.02505947499113557" />
+      <entry key="S5" value="0.22886995658077017" />
+      <entry key="S10" value="0.4784035500217923" />
+      <entry key="S30" value="0.7825642838480578" />
+      <entry key="S60" value="0.9067966193924686" />
+      <entry key="M2" value="1.1315072118970755" />
+      <entry key="M5" value="1.8766779660792647" />
+      <entry key="M10" value="2.6039037787733266" />
+      <entry key="M15" value="2.970705747360615" />
+      <entry key="M30" value="3.4280155582474103" />
+      <entry key="H1" value="3.697921005115264" />
+      <entry key="H2" value="3.8446955521311326" />
+      <entry key="H4" value="3.9212494738191253" />
+      <entry key="D1" value="3.986719567930708" />
+      <entry key="W1" value="3.998098953966279" />
+    </decayedSelected>
+    <decayedShown>
+      <entry key="MS100" value="0.5471468506303697" />
+      <entry key="MS500" value="0.8866580037175867" />
+      <entry key="S2" value="1.129052587548408" />
+      <entry key="S5" value="1.80025768090369" />
+      <entry key="S10" value="2.5197131234025902" />
+      <entry key="S30" value="3.3813941788217754" />
+      <entry key="S60" value="3.698474072666645" />
+      <entry key="M2" value="4.244651793563437" />
+      <entry key="M5" value="7.011286059718805" />
+      <entry key="M10" value="10.247422878861423" />
+      <entry key="M15" value="11.970845078850774" />
+      <entry key="M30" value="14.175786872912367" />
+      <entry key="H1" value="15.500441979782051" />
+      <entry key="H2" value="16.226959059282546" />
+      <entry key="H4" value="16.607479297835514" />
+      <entry key="D1" value="16.933730354766393" />
+      <entry key="W1" value="16.99051188896804" />
+    </decayedShown>
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 5
+}</component>
+  <component name="ProjectId" id="3HL2Opn3Bxsc6XozTALAnxWkBXE" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;Python.control_module.executor&quot;: &quot;Run&quot;,
+    &quot;Python.gui_app.executor&quot;: &quot;Run&quot;,
+    &quot;Python.vision_engine.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;vcs.Git&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
+  }
+}</component>
+  <component name="RunManager" selected="Python.gui_app">
+    <configuration name="control_module" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="VersaiOS_Runtime" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/gui" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="DEBUG_JUST_MY_CODE" value="false" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/gui/control_module.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="gui_app" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="VersaiOS_Runtime" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="DEBUG_JUST_MY_CODE" value="false" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/gui_app.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="vision_engine" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="VersaiOS_Runtime" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="DEBUG_JUST_MY_CODE" value="false" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="RUN_TOOL" value="" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/vision_engine.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.gui_app" />
+        <item itemvalue="Python.control_module" />
+        <item itemvalue="Python.vision_engine" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-python-sdk-245168a56dbd-c2ffad84badb-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-261.25134.203" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="默认任务">
+      <changelist id="845b5998-a91e-4064-9660-7f6e93ca5849" name="更改" comment="" />
+      <created>1785632999290</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1785632999290</updated>
+      <workItem from="1785633001205" duration="158000" />
+      <workItem from="1785634315836" duration="30000" />
+      <workItem from="1785634426210" duration="359000" />
+      <workItem from="1785731645973" duration="1472000" />
+      <workItem from="1785919157229" duration="32000" />
+      <workItem from="1785921841762" duration="1447000" />
+      <workItem from="1785928886320" duration="331000" />
+      <workItem from="1785994341590" duration="128000" />
+    </task>
+    <task id="LOCAL-00001" summary="V3.0.1（2026-08-02）&#10;依赖清单修正&#10;&#10;requirements.txt：新增 numpy、customtkinter。&#10;所有依赖按运行场景分组并固定 major 版本：核心 / CLI、视觉处理、图形界面。&#10;新增 README 说明：不同运行模式（CLI / GUI / vision-only）所需依赖组。&#10;图像上送安全化（src/ai_brain.py）&#10;&#10;发往 LLM 的截图统一先缩放（长边 ≤ 1280px）并压缩为 JPEG（质量 85），避免 base64 请求体过大。&#10;Gemini 路径优先调用 client.files.upload 上传图片，仅传递文件 URI；上传失败时自动回退到内联 bytes。&#10;OpenAI 兼容路径使用 image_url + JPEG base64 data URL，并保留 response_format 自动降级逻辑。&#10;明确按 SDK 异常类型捕获，避免裸 except Exception 吞掉错误。&#10;异常处理收紧&#10;&#10;src/main_versaios.py：串口相关异常捕获 serial.SerialException / PermissionError / OSError，不再吞掉无关错误。&#10;src/vision_engine.py：窗口定位与 mss 截图分别捕获 _WINDOW_ERRORS / _MSS_ERRORS。&#10;src/ai_brain.py：按 ConnectionError、TimeoutError、SDK 具体错误分类处理并保留重试逻辑。&#10;HID 未校准风险提示&#10;&#10;src/config.py：新增 DEFAULT_HID_MAX_X/Y 常量与 is_hid_calibrated() 判断。&#10;gui/calibration_module.py：若 HID 步数未显式配置，界面显示橙色警告。&#10;src/main_versaios.py：CLI 启动时若使用默认值，日志输出校准警告。&#10;README 校准章节补充风险提示。&#10;启动前配置校验&#10;&#10;src/config.py：识别 config.example.ini 复制来的 API Key 占位值，启动前直接提示填写真实 Key。&#10;gui_app.py：窗口标题版本号同步为 V3.0.1。&#10;日志初始化保护&#10;&#10;src/logging_setup.py：增加进程级 _setup_done 标志；调用时先清空已有 handler 再统一格式，避免第三方库提前写入导致格式不一致。&#10;系统依赖说明&#10;&#10;README 补充：Windows 需安装 Apple Bonjour；UxPlay/gst_plugins/ 为 GStreamer 插件矩阵，首次运行自动生成 gst_registry.bin。&#10;项目整洁化&#10;&#10;删除 IDE 配置 .idea/、.vscode/、所有 __pycache__、运行时生成的 assets/debug_target_result.png、缓存 UxPlay/gst_registry.bin、安装器 BonjourPSSetup.exe。&#10;更新 .gitignore：忽略 IDE 配置、调试图。">
+      <option name="closed" value="true" />
+      <created>1785634753651</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1785634753651</updated>
+    </task>
+    <task id="LOCAL-00002" summary="ds">
+      <option name="closed" value="true" />
+      <created>1785732105937</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1785732105937</updated>
+    </task>
+    <task id="LOCAL-00003" summary="模型选择器扩展&#10;模型厂商按 OpenAI、兼容 OpenAI 接口（本地模型/中转代理）、DeepSeek、Google Gemini、Anthropic Claude、智谱 AI、阿里通义千问、MiniMax 的顺序展示。&#10;新增官方默认模型与端点；切换厂商时 GUI 自动填充推荐值，同时保留用户手动填写的模型名和代理端点。&#10;DeepSeek、智谱、通义、MiniMax 复用 OpenAI 兼容调用；Claude 新增 Anthropic Messages API 路径与 anthropic 依赖。">
+      <option name="closed" value="true" />
+      <created>1785733160291</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1785733160291</updated>
+    </task>
+    <task id="LOCAL-00004" summary="V3.0.2（2026-08-05）&#10;requirements.txt 与 Python 3.13 兼容性修复&#10;SDK 专属异常重试修复（src/ai_brain.py）&#10;&#10;在 VersaiOSAgent.__init__ 中按 provider 收集可重试异常：Gemini ServerError、OpenAI APIConnectionError/RateLimitError/InternalServerError、Anthropic 对应异常，并叠加 Python ConnectionError/TimeoutError。&#10;analyze_ui_and_plan 统一捕获 self._retryable_errors，避免 SDK 专属网络/限流异常被裸 except Exception 吞掉。&#10;视觉捕获稳定性增强（src/vision_engine.py）&#10;&#10;_get_window_rect 在保留具体异常捕获的基础上，新增 Exception 兜底分支，窗口枚举偶发错误时返回 None 而非崩溃。&#10;GUI 异常捕获收窄&#10;&#10;gui/calibration_module.py：串口操作统一捕获 _SERIAL_ERRORS = (serial.SerialException, PermissionError, OSError)。&#10;gui/control_module.py：子进程操作统一捕获 _PROCESS_ERRORS = (subprocess.SubprocessError, OSError)；stdin 写入捕获 (OSError, ValueError)。">
+      <option name="closed" value="true" />
+      <created>1785929180750</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1785929180750</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="V3.0.1（2026-08-02）&#10;依赖清单修正&#10;&#10;requirements.txt：新增 numpy、customtkinter。&#10;所有依赖按运行场景分组并固定 major 版本：核心 / CLI、视觉处理、图形界面。&#10;新增 README 说明：不同运行模式（CLI / GUI / vision-only）所需依赖组。&#10;图像上送安全化（src/ai_brain.py）&#10;&#10;发往 LLM 的截图统一先缩放（长边 ≤ 1280px）并压缩为 JPEG（质量 85），避免 base64 请求体过大。&#10;Gemini 路径优先调用 client.files.upload 上传图片，仅传递文件 URI；上传失败时自动回退到内联 bytes。&#10;OpenAI 兼容路径使用 image_url + JPEG base64 data URL，并保留 response_format 自动降级逻辑。&#10;明确按 SDK 异常类型捕获，避免裸 except Exception 吞掉错误。&#10;异常处理收紧&#10;&#10;src/main_versaios.py：串口相关异常捕获 serial.SerialException / PermissionError / OSError，不再吞掉无关错误。&#10;src/vision_engine.py：窗口定位与 mss 截图分别捕获 _WINDOW_ERRORS / _MSS_ERRORS。&#10;src/ai_brain.py：按 ConnectionError、TimeoutError、SDK 具体错误分类处理并保留重试逻辑。&#10;HID 未校准风险提示&#10;&#10;src/config.py：新增 DEFAULT_HID_MAX_X/Y 常量与 is_hid_calibrated() 判断。&#10;gui/calibration_module.py：若 HID 步数未显式配置，界面显示橙色警告。&#10;src/main_versaios.py：CLI 启动时若使用默认值，日志输出校准警告。&#10;README 校准章节补充风险提示。&#10;启动前配置校验&#10;&#10;src/config.py：识别 config.example.ini 复制来的 API Key 占位值，启动前直接提示填写真实 Key。&#10;gui_app.py：窗口标题版本号同步为 V3.0.1。&#10;日志初始化保护&#10;&#10;src/logging_setup.py：增加进程级 _setup_done 标志；调用时先清空已有 handler 再统一格式，避免第三方库提前写入导致格式不一致。&#10;系统依赖说明&#10;&#10;README 补充：Windows 需安装 Apple Bonjour；UxPlay/gst_plugins/ 为 GStreamer 插件矩阵，首次运行自动生成 gst_registry.bin。&#10;项目整洁化&#10;&#10;删除 IDE 配置 .idea/、.vscode/、所有 __pycache__、运行时生成的 assets/debug_target_result.png、缓存 UxPlay/gst_registry.bin、安装器 BonjourPSSetup.exe。&#10;更新 .gitignore：忽略 IDE 配置、调试图。" />
+    <MESSAGE value="ds" />
+    <MESSAGE value="Revert &quot;V3.0.1（2026-08-02） 依赖清单修正&quot;&#10;&#10;This reverts commit 7bb061cd" />
+    <MESSAGE value="模型选择器扩展&#10;模型厂商按 OpenAI、兼容 OpenAI 接口（本地模型/中转代理）、DeepSeek、Google Gemini、Anthropic Claude、智谱 AI、阿里通义千问、MiniMax 的顺序展示。&#10;新增官方默认模型与端点；切换厂商时 GUI 自动填充推荐值，同时保留用户手动填写的模型名和代理端点。&#10;DeepSeek、智谱、通义、MiniMax 复用 OpenAI 兼容调用；Claude 新增 Anthropic Messages API 路径与 anthropic 依赖。" />
+    <MESSAGE value="V3.0.2（2026-08-05）&#10;requirements.txt 与 Python 3.13 兼容性修复&#10;SDK 专属异常重试修复（src/ai_brain.py）&#10;&#10;在 VersaiOSAgent.__init__ 中按 provider 收集可重试异常：Gemini ServerError、OpenAI APIConnectionError/RateLimitError/InternalServerError、Anthropic 对应异常，并叠加 Python ConnectionError/TimeoutError。&#10;analyze_ui_and_plan 统一捕获 self._retryable_errors，避免 SDK 专属网络/限流异常被裸 except Exception 吞掉。&#10;视觉捕获稳定性增强（src/vision_engine.py）&#10;&#10;_get_window_rect 在保留具体异常捕获的基础上，新增 Exception 兜底分支，窗口枚举偶发错误时返回 None 而非崩溃。&#10;GUI 异常捕获收窄&#10;&#10;gui/calibration_module.py：串口操作统一捕获 _SERIAL_ERRORS = (serial.SerialException, PermissionError, OSError)。&#10;gui/control_module.py：子进程操作统一捕获 _PROCESS_ERRORS = (subprocess.SubprocessError, OSError)；stdin 写入捕获 (OSError, ValueError)。" />
+    <option name="LAST_COMMIT_MESSAGE" value="V3.0.2（2026-08-05）&#10;requirements.txt 与 Python 3.13 兼容性修复&#10;SDK 专属异常重试修复（src/ai_brain.py）&#10;&#10;在 VersaiOSAgent.__init__ 中按 provider 收集可重试异常：Gemini ServerError、OpenAI APIConnectionError/RateLimitError/InternalServerError、Anthropic 对应异常，并叠加 Python ConnectionError/TimeoutError。&#10;analyze_ui_and_plan 统一捕获 self._retryable_errors，避免 SDK 专属网络/限流异常被裸 except Exception 吞掉。&#10;视觉捕获稳定性增强（src/vision_engine.py）&#10;&#10;_get_window_rect 在保留具体异常捕获的基础上，新增 Exception 兜底分支，窗口枚举偶发错误时返回 None 而非崩溃。&#10;GUI 异常捕获收窄&#10;&#10;gui/calibration_module.py：串口操作统一捕获 _SERIAL_ERRORS = (serial.SerialException, PermissionError, OSError)。&#10;gui/control_module.py：子进程操作统一捕获 _PROCESS_ERRORS = (subprocess.SubprocessError, OSError)；stdin 写入捕获 (OSError, ValueError)。" />
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/VersaiOS_Runtime$vision_engine.coverage" NAME="vision_engine 覆盖结果" MODIFIED="1785922874565" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
+    <SUITE FILE_PATH="coverage/VersaiOS_Runtime$control_module.coverage" NAME="control_module 覆盖结果" MODIFIED="1785923222902" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/gui" />
+    <SUITE FILE_PATH="coverage/VersaiOS_Runtime$gui_app.coverage" NAME="gui_app 覆盖结果" MODIFIED="1785928906870" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+  </component>
+</project>

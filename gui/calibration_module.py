@@ -1,7 +1,7 @@
 # gui/calibration_module.py
 """
 模块一：准备阶段
-- 模型提供方、API Key、模型名称等 LLM 配置
+- OpenAI 兼容接口的 API Key、Base URL、模型名称等 LLM 配置
 - 串口号与 HID 步数校准
 """
 import threading
@@ -16,11 +16,7 @@ _SERIAL_ERRORS = (serial.SerialException, PermissionError, OSError)
 from config import (
     DEFAULT_HID_MAX_X,
     DEFAULT_HID_MAX_Y,
-    LLM_PROVIDER_OPTIONS,
-    get_default_llm_base_url,
     get_default_llm_model,
-    get_llm_provider_id,
-    get_llm_provider_label,
     is_hid_calibrated,
     reload_config,
 )
@@ -53,30 +49,39 @@ class CalibrationModule(ctk.CTkFrame):
         model_frame.pack(padx=20, pady=10, fill="x")
         ctk.CTkLabel(model_frame, text="模型配置", font=("Arial", 14, "bold")).pack(pady=(10, 5))
 
-        self.provider_var = ctk.StringVar(value=get_llm_provider_label("gemini"))
-        self._current_provider_id = "gemini"
-        ctk.CTkLabel(model_frame, text="模型厂商").pack()
-        self.provider_combo = ctk.CTkComboBox(
+        ctk.CTkLabel(
             model_frame,
-            values=[label for _, label in LLM_PROVIDER_OPTIONS],
-            variable=self.provider_var,
-            command=self._on_provider_selected,
-            width=350,
-        )
-        self.provider_combo.pack(pady=5)
+            text="模型接口：OpenAI 兼容接口（固定，无需选择）",
+            font=("Arial", 12, "bold"),
+            text_color="#1abc9c",
+        ).pack(pady=5)
 
         ctk.CTkLabel(model_frame, text="API Key").pack()
         self.api_key_entry = ctk.CTkEntry(model_frame, show="*", width=350)
         self.api_key_entry.pack(pady=5)
 
-        self.base_url_label = ctk.CTkLabel(model_frame, text="Base URL（可选；可填写官方端点或代理地址）")
-        self.base_url_label.pack()
+        ctk.CTkLabel(
+            model_frame,
+            text="Base URL（OpenAI 兼容端点，必填；如 http://127.0.0.1:1234/v1 或 https://api.openai.com/v1）",
+            wraplength=520,
+            justify="left",
+        ).pack()
         self.base_url_entry = ctk.CTkEntry(model_frame, width=350)
         self.base_url_entry.pack(pady=5)
 
         ctk.CTkLabel(model_frame, text="模型名称").pack()
         self.model_entry = ctk.CTkEntry(model_frame, width=350)
         self.model_entry.pack(pady=5)
+
+        self.confirm_llm_btn = ctk.CTkButton(
+            model_frame,
+            text="确认并写入 config",
+            command=self._confirm_llm_config,
+            fg_color="#1abc9c",
+            hover_color="#16a085",
+            width=350,
+        )
+        self.confirm_llm_btn.pack(pady=(10, 5))
 
         # ---------------- 连接配置 ----------------
         conn_frame = ctk.CTkFrame(self)
@@ -175,48 +180,14 @@ class CalibrationModule(ctk.CTkFrame):
             self._set_status(f"加载配置失败: {e}", "red")
             return
 
-        provider_id = get_llm_provider_id(cfg.get("llm_provider", "gemini"))
-        self._current_provider_id = provider_id
-        self.provider_var.set(get_llm_provider_label(provider_id))
         self.api_key_entry.insert(0, cfg.get("llm_api_key", ""))
-        self.base_url_entry.insert(0, cfg.get("llm_base_url", "") or get_default_llm_base_url(provider_id) or "")
-        self.model_entry.insert(0, cfg.get("llm_model", get_default_llm_model(provider_id)))
+        self.base_url_entry.insert(0, cfg.get("llm_base_url", ""))
+        self.model_entry.insert(0, cfg.get("llm_model", get_default_llm_model()))
         self.com_port_entry.insert(0, cfg.get("com_port", "COM3"))
         self.window_title_entry.insert(0, cfg.get("window_title", "VersaiOS_Screen"))
         self.hid_max_x_entry.insert(0, cfg.get("hid_max_x", str(DEFAULT_HID_MAX_X)))
         self.hid_max_y_entry.insert(0, cfg.get("hid_max_y", str(DEFAULT_HID_MAX_Y)))
-        self._refresh_provider_hint(provider_id)
         self._refresh_calibration_warning()
-
-    def _on_provider_selected(self, selection: str):
-        """切换厂商时填入推荐模型/端点，但不覆盖用户已经手动填写的值。"""
-        provider_id = get_llm_provider_id(selection)
-        previous_model = get_default_llm_model(self._current_provider_id)
-        previous_base_url = get_default_llm_base_url(self._current_provider_id)
-        suggested_model = get_default_llm_model(provider_id)
-        suggested_base_url = get_default_llm_base_url(provider_id)
-
-        current_model = self.model_entry.get().strip()
-        if not current_model or current_model == previous_model:
-            self.model_entry.delete(0, "end")
-            self.model_entry.insert(0, suggested_model)
-
-        current_base_url = self.base_url_entry.get().strip()
-        if not current_base_url or current_base_url == previous_base_url:
-            self.base_url_entry.delete(0, "end")
-            if suggested_base_url:
-                self.base_url_entry.insert(0, suggested_base_url)
-
-        self._current_provider_id = provider_id
-        self._refresh_provider_hint(provider_id)
-
-    def _refresh_provider_hint(self, provider_id: str):
-        if provider_id == "openai_compatible":
-            self.base_url_label.configure(text="Base URL（本地模型/中转代理：必填）")
-        elif provider_id == "anthropic":
-            self.base_url_label.configure(text="Base URL（可选；通常留空即可使用 Claude 官方接口）")
-        else:
-            self.base_url_label.configure(text="Base URL（可选；已填入官方端点，可改为区域端点或代理）")
 
     # ========================== 串口连接 ==========================
     def _connect_serial(self):
@@ -325,10 +296,31 @@ class CalibrationModule(ctk.CTkFrame):
         self.acc_label.configure(text=f"当前累计: X={self._acc_x}, Y={self._acc_y}")
 
     # ========================== 配置保存 ==========================
+    def _confirm_llm_config(self):
+        """确认按钮：将 API Key / Base URL / 模型名立即写入 config.ini。"""
+        api_key = self.api_key_entry.get().strip()
+        base_url = self.base_url_entry.get().strip()
+        model_name = self.model_entry.get().strip() or get_default_llm_model()
+        try:
+            updates = {
+                "llm_provider": "openai_compatible",
+                "llm_api_key": api_key,
+                "llm_base_url": base_url,
+                "llm_model": model_name,
+            }
+            save_config_values(updates)
+            reload_config()
+            if api_key and base_url:
+                self._set_status("API Key / Base URL 已写入 config.ini", "green")
+            else:
+                self._set_status("已写入 config.ini，但 API Key 或 Base URL 为空，运行前请补齐", "orange")
+        except (OSError, ValueError) as e:
+            self._set_status(f"写入配置失败: {e}", "red")
+
     def _save_all_config(self):
         try:
             updates = {
-                "llm_provider": get_llm_provider_id(self.provider_var.get()),
+                "llm_provider": "openai_compatible",
                 "llm_api_key": self.api_key_entry.get().strip(),
                 "llm_base_url": self.base_url_entry.get().strip(),
                 "llm_model": self.model_entry.get().strip(),
