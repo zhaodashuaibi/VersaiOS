@@ -63,6 +63,22 @@ void loop() {
             move_relative_safe(x, y);
             Serial.printf(">>> [测试] 纯相对移动: dx=%d, dy=%d\n", x, y);
         }
+        else if (cmd == "TAP") {
+            bleMouse.click();
+            Serial.println(">>> [执行] 原地点击完成！");
+        }
+        else if (sscanf(cmd.c_str(), "SCROLL:%d", &x) == 1) {
+            if (x != 0 && x >= -24 && x <= 24) {
+                int direction = x > 0 ? 1 : -1;
+                for (int i = 0; i < abs(x); ++i) {
+                    bleMouse.move(0, 0, direction);
+                    delay(30);
+                }
+                Serial.println(">>> [执行] 滚轮完成");
+            } else {
+                Serial.println(">>> [错误] SCROLL 刻度须为 -24..24 且非 0");
+            }
+        }
         // 3. 核心击发指令（供主程序 main_versaios.py 使用）
         else if (sscanf(cmd.c_str(), "CLICK:%d,%d", &x, &y) == 2) {
             Serial.printf(">>> [指令] 收到点击任务: 目标 (%d, %d)\n", x, y);
